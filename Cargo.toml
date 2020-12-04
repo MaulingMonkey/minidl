@@ -2,7 +2,7 @@
 
 [package]
 name            = "minidl"
-version         = "0.1.0"
+version         = "0.0.0-git"
 authors         = ["MaulingMonkey <git@maulingmonkey.com>"]
 description     = "Extremely lean cross platform library for loading symbols"
 documentation   = "https://docs.rs/minidl"
