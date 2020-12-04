@@ -24,7 +24,7 @@ impl Library {
     /// 
     /// | OS        | Behavior |
     /// | --------- | -------- |
-    /// | Windows   | `minidlrary(path)`
+    /// | Windows   | `LoadLibraryW(path)`
     /// | Unix      | `dlopen(path, ...)`
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
