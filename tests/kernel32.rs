@@ -36,14 +36,14 @@ impl Debug for Example {
 #[test] fn bad_load() {
     let e = Library::load("does_not_exist_invalid.dll").expect_err("Invalid DLL should've failed to load");
     let e = format!("{}", e);
-    assert!(e.contains("does_not_exist_invalid"), e);
+    assert!(e.contains("does_not_exist_invalid"), "{}", e);
 }
 
 #[test] fn bad_sym() {
     let e = Example::new().expect_err("Example should've failed to load Invalid_Required");
     let e = format!("{}", e);
-    assert!(!e.contains("Invalid_Optional"), e);
-    assert!( e.contains("Invalid_Required"), e);
+    assert!(!e.contains("Invalid_Optional"), "{}", e);
+    assert!( e.contains("Invalid_Required"), "{}", e);
 }
 
 #[test] fn ok_sym() {

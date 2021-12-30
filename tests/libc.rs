@@ -35,14 +35,14 @@ impl Example {
 #[test] fn bad_load() {
     let e = Library::load("libdoes_not_exist_invalid.so").expect_err("Invalid SO should've failed to load");
     let e = format!("{}", e);
-    assert!(e.contains("does_not_exist_invalid"), e);
+    assert!(e.contains("does_not_exist_invalid"), "{}", e);
 }
 
 #[test] fn bad_sym() {
     let e = Example::new().expect_err("Example should've failed to load invalid_required");
     let e = format!("{}", e);
-    assert!(!e.contains("invalid_optional"), e);
-    assert!( e.contains("invalid_required"), e);
+    assert!(!e.contains("invalid_optional"), "{}", e);
+    assert!( e.contains("invalid_required"), "{}", e);
 }
 
 #[test] fn ok_sym() {

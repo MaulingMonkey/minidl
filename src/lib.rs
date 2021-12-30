@@ -1,5 +1,4 @@
-#![cfg_attr(feature = "nightly", feature(external_doc))]
-#![cfg_attr(feature = "nightly", doc(include = "../Readme.md"))]
+#![doc = include_str!("../Readme.md")]
 
 use std::ffi::c_void;
 use std::os::raw::*;
@@ -21,20 +20,20 @@ unsafe impl Sync for Library {}
 
 impl Library {
     /// Load a library, forever.
-    /// 
+    ///
     /// | OS        | Behavior |
     /// | --------- | -------- |
     /// | Windows   | `LoadLibraryW(path)`
     /// | Unix      | `dlopen(path, ...)`
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
-    
+
         #[cfg(windows)] let handle = {
             use std::os::windows::ffi::OsStrExt;
             let filename = path.as_os_str().encode_wide().chain([0].iter().copied()).collect::<Vec<u16>>();
             unsafe { LoadLibraryW(filename.as_ptr()) }
         };
-    
+
         #[cfg(unix)] let handle = {
             use std::os::unix::ffi::OsStrExt;
             let filename = path.as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<Vec<u8>>();
@@ -47,20 +46,22 @@ impl Library {
         } else {
             #[cfg(windows)] {
                 let err = Error::last_os_error();
-                if err.kind() == io::ErrorKind::Other && err.raw_os_error() == Some(ERROR_BAD_EXE_FORMAT) {
-                    Err(io::Error::new(io::ErrorKind::Other, format!(
-                        "Unable to load {path}: ERROR_BAD_EXE_FORMAT (likely tried to load a {that}-bit DLL into this {this}-bit process)",
-                        path = path.display(),
-                        this = if cfg!(target_arch = "x86_64") { "64" } else { "32" },
-                        that = if cfg!(target_arch = "x86_64") { "32" } else { "64" },
-                    )))
-                } else if err.kind() == io::ErrorKind::Other && err.raw_os_error() == Some(ERROR_MOD_NOT_FOUND) {
-                    Err(io::Error::new(io::ErrorKind::NotFound, format!(
-                        "Unable to load {path}: NotFound",
-                        path = path.display(),
-                    )))
-                } else {
-                    Err(err)
+                match err.raw_os_error() {
+                    Some(ERROR_BAD_EXE_FORMAT) => {
+                        Err(io::Error::new(io::ErrorKind::Other, format!(
+                            "Unable to load {path}: ERROR_BAD_EXE_FORMAT (likely tried to load a {that}-bit DLL into this {this}-bit process)",
+                            path = path.display(),
+                            this = if cfg!(target_arch = "x86_64") { "64" } else { "32" },
+                            that = if cfg!(target_arch = "x86_64") { "32" } else { "64" },
+                        )))
+                    },
+                    Some(ERROR_MOD_NOT_FOUND) => {
+                        Err(io::Error::new(io::ErrorKind::NotFound, format!(
+                            "Unable to load {path}: NotFound",
+                            path = path.display(),
+                        )))
+                    },
+                    _ => Err(err)
                 }
             }
             #[cfg(unix)] {
@@ -73,13 +74,13 @@ impl Library {
     /// Load a symbol from the library.
     /// Note that the symbol name must end with '\0'.
     /// Limiting yourself to basic ASCII is also likely wise.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// This function implicitly transmutes!  Use extreme caution.
-    /// 
+    ///
     /// # Platform
-    /// 
+    ///
     /// | OS        | Behavior |
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
@@ -94,13 +95,13 @@ impl Library {
     /// Load a symbol from the library.
     /// Note that the symbol name must end with '\0'.
     /// Limiting yourself to basic ASCII is also likely wise.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// This function implicitly transmutes!  Use extreme caution.
-    /// 
+    ///
     /// # Platform
-    /// 
+    ///
     /// | OS        | Behavior |
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
@@ -116,7 +117,7 @@ impl Library {
         let cname = name.as_ptr() as _;
         #[cfg(windows)] let result = GetProcAddress(module, cname);
         #[cfg(unix)] let result = dlsym(module, cname);
-    
+
         if result == null_mut() {
             None
         } else {
@@ -125,8 +126,8 @@ impl Library {
     }
 }
 
-#[cfg(windows)] const ERROR_MOD_NOT_FOUND  : i32 = 0x007E;
 #[cfg(windows)] const ERROR_BAD_EXE_FORMAT : i32 = 0x00C1;
+#[cfg(windows)] const ERROR_MOD_NOT_FOUND  : i32 = 0x007E;
 #[cfg(windows)] extern "system" {
     fn GetProcAddress(hModule: *mut c_void, lpProcName: *const c_char) -> *mut c_void;
     fn LoadLibraryW(lpFileName: *const u16) -> *mut c_void;
