@@ -14,6 +14,7 @@ pub type Result<T> = std::io::Result<T>;
 
 /// A loaded library handle.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
 pub struct Library(*mut c_void);
 unsafe impl Send for Library {}
 unsafe impl Sync for Library {}
