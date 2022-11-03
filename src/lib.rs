@@ -137,7 +137,7 @@ impl Library {
     /// | OS        | Behavior |
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(name))`
-    /// | Unix      | `dlsym(..., name)`
+    /// | Unix      | `not supported`
     pub unsafe fn ord<'a, T>(&self, ordinal: c_int) -> Option<T> {
         let module = self.0;
         assert!(std::mem::size_of::<T>() == std::mem::size_of::<*mut c_void>(), "symbol result is not pointer sized!");

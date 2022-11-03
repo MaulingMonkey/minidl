@@ -55,3 +55,13 @@ impl Debug for Example {
         OutputDebugStringA(b"Hello, world!\0".as_ptr() as _);
     }
 }
+
+#[test] fn ok_ord() {
+    unsafe {
+        let OutputDebugStringA : unsafe extern "system" fn (_: *const c_char)
+            = Library::load("kernel32.dll").unwrap()
+            .ord(0x41c).unwrap();
+
+        OutputDebugStringA(b"Hello, world!\0".as_ptr() as _);
+    }
+}
