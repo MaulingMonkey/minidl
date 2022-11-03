@@ -138,11 +138,11 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(name))`
     /// | Unix      | `not supported`
-    pub unsafe fn ord<'a, T>(&self, ordinal: c_int) -> Option<T> {
+    pub unsafe fn ord<'a, T>(&self, ordinal: u16) -> Option<T> {
         let module = self.0;
         assert!(std::mem::size_of::<T>() == std::mem::size_of::<*mut c_void>(), "symbol result is not pointer sized!");
 
-        #[cfg(windows)] let result = GetProcAddress(module, ordinal as u16 as usize as _);
+        #[cfg(windows)] let result = GetProcAddress(module, ordinal as usize as _);
         #[cfg(unix)] let result = std::ptr::null_mut(); // not supported
 
         if result == null_mut() {
