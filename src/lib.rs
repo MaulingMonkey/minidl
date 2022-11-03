@@ -125,6 +125,32 @@ impl Library {
             Some(std::ptr::read(&result as *const *mut c_void as *const T))
         }
     }
+
+    /// Load a ordinal from the library.
+    ///
+    /// # Safety
+    ///
+    /// This function implicitly transmutes!  Use extreme caution.
+    ///
+    /// # Platform
+    ///
+    /// | OS        | Behavior |
+    /// | --------- | -------- |
+    /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(name))`
+    /// | Unix      | `dlsym(..., name)`
+    pub unsafe fn ord<'a, T>(&self, ordinal: c_int) -> Option<T> {
+        let module = self.0;
+        assert!(std::mem::size_of::<T>() == std::mem::size_of::<*mut c_void>(), "symbol result is not pointer sized!");
+
+        #[cfg(windows)] let result = GetProcAddress(module, ordinal as u16 as usize as _);
+        #[cfg(unix)] let result = std::ptr::null_mut(); // not supported
+
+        if result == null_mut() {
+            None
+        } else {
+            Some(std::ptr::read(&result as *const *mut c_void as *const T))
+        }
+    }
 }
 
 #[cfg(windows)] const ERROR_BAD_EXE_FORMAT : i32 = 0x00C1;
