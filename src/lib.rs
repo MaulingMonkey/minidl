@@ -1,6 +1,7 @@
 #![doc = include_str!("../Readme.md")]
 
 use std::ffi::c_void;
+use std::mem::size_of;
 use std::os::raw::*;
 use std::io;
 use std::path::Path;
@@ -111,7 +112,7 @@ impl Library {
         let name = name.as_ref();
         let module = self.0;
         let n = name.len();
-        assert!(std::mem::size_of::<T>() == std::mem::size_of::<*mut c_void>(), "symbol result is not pointer sized!");
+        assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
         assert!(name.ends_with('\0'),           "symbol name must end with '\0'");
         assert!(!name[..n-1].contains('\0'),    "symbol name mustn't contain '\0's, except to terminate the string");
 
@@ -124,6 +125,77 @@ impl Library {
         } else {
             Some(std::ptr::read(&result as *const *mut c_void as *const T))
         }
+    }
+
+    /// Load a symbol from the library by ordinal.
+    ///
+    /// # Safety
+    ///
+    /// This function implicitly transmutes!  Use extreme caution.
+    /// Additionally, DLL ordinals are typically unstable and might change between minor versions of the same DLL, breaking your imports in nastily subtle ways.
+    /// If a function name is available, use it instead!
+    ///
+    /// # Platform
+    ///
+    /// | OS        | Behavior |
+    /// | --------- | -------- |
+    /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(ordinal))`
+    /// | <strike>Unix</strike> | `Err(...)`
+    pub unsafe fn sym_by_ordinal<T>(self, ordinal: u16) -> io::Result<T> {
+        self.sym_opt_by_ordinal(ordinal).ok_or_else(||{
+            io::Error::new(io::ErrorKind::InvalidInput, format!("Symbol @{ordinal} missing from library"))
+        })
+    }
+
+    /// Load a symbol from the library by ordinal.
+    ///
+    /// # Safety
+    ///
+    /// This function implicitly transmutes!  Use extreme caution.
+    /// Additionally, DLL ordinals are typically unstable and might change between minor versions of the same DLL, breaking your imports in nastily subtle ways.
+    /// If a function name is available, use it instead!
+    ///
+    /// # Platform
+    ///
+    /// | OS        | Behavior |
+    /// | --------- | -------- |
+    /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(ordinal))`
+    /// | <strike>Unix</strike> | `None`
+    pub unsafe fn sym_opt_by_ordinal<T>(self, ordinal: u16) -> Option<T> {
+        assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
+
+        // SAFETY: ✔️
+        //  * `hModule`     ✔️ is a valid, non-dangling, permanently loaded hmodule
+        //  * `lpProcName`  ✔️ is a WORD/u16, meeting GetProcAddress's documented requirement:
+        //                  "If this parameter is an ordinal value, it must be in the low-order word; the high-order word must be zero."
+        #[cfg(windows)] let func = unsafe { GetProcAddress(self.0, ordinal as usize as *const _) };
+        #[cfg(unix)] let func = null_mut::<c_void>();
+        #[cfg(unix)] let _ = ordinal;
+
+        if func.is_null() {
+            None
+        } else {
+            // SAFETY: ✔️
+            //  * `T`   ✔️ is asserted to be the same size as `*mut c_void` via assert at start of function (can't enforce this at compile time)
+            //  * `T`   ✔️ is assumed compatible with `*mut c_void` per the documented safety contract of this unsafe function
+            Some(std::mem::transmute_copy::<*mut c_void, T>(&func))
+        }
+    }
+
+    /// Check if a symbol existing in the library.
+    /// Note that the symbol name must end with '\0'.
+    /// Limiting yourself to basic ASCII is also likely wise.
+    ///
+    /// # Platform
+    ///
+    /// | OS        | Behavior |
+    /// | --------- | -------- |
+    /// | Windows   | `!!GetProcAddress(..., name)`
+    /// | Unix      | `!!dlsym(..., name)`
+    pub fn has_sym(self, name: impl AsRef<str>) -> bool {
+        // SAFETY: ✔️ cast to `*mut c_void` should always be safe.
+        let s : Option<*mut c_void> = unsafe { self.sym_opt(name) };
+        s.is_some()
     }
 }
 
