@@ -7,8 +7,7 @@
 [![License](https://img.shields.io/crates/l/minidl.svg)](https://github.com/MaulingMonkey/minidl)
 <br>
 [![GitHub](https://img.shields.io/github/stars/MaulingMonkey/minidl.svg?label=GitHub&style=social)](https://github.com/MaulingMonkey/minidl)
-[![Build Status: Travis](https://travis-ci.org/MaulingMonkey/minidl.svg)](https://travis-ci.org/MaulingMonkey/minidl)
-[![Build Status: AppVeyor](https://img.shields.io/appveyor/ci/MaulingMonkey/minidl)](https://ci.appveyor.com/project/MaulingMonkey/minidl)
+[![Build Status](https://github.com/MaulingMonkey/minidl/workflows/Rust/badge.svg)](https://github.com/MaulingMonkey/minidl/actions?query=workflow%3Arust)
 [![Open issues](https://img.shields.io/github/issues-raw/MaulingMonkey/minidl.svg)](https://github.com/MaulingMonkey/minidl/issues)
 [![dependency status](https://deps.rs/repo/github/MaulingMonkey/minidl/status.svg)](https://deps.rs/repo/github/MaulingMonkey/minidl)
 
