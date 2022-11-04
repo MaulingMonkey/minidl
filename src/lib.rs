@@ -168,7 +168,7 @@ impl Library {
         //  * `hModule`     ✔️ is a valid, non-dangling, permanently loaded hmodule
         //  * `lpProcName`  ✔️ is a WORD/u16, meeting GetProcAddress's documented requirement:
         //                  "If this parameter is an ordinal value, it must be in the low-order word; the high-order word must be zero."
-        #[cfg(windows)] let func = unsafe { GetProcAddress(self.0, ordinal as usize as *const _) };
+        #[cfg(windows)] let func = GetProcAddress(self.0, ordinal as usize as *const _);
         #[cfg(unix)] let func = null_mut::<c_void>();
         #[cfg(unix)] let _ = ordinal;
 
