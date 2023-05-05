@@ -197,6 +197,13 @@ impl Library {
         let s : Option<*mut c_void> = unsafe { self.sym_opt(name) };
         s.is_some()
     }
+    
+    pub fn free(self) -> c_int {
+        let module = self.0;
+        #[cfg(windows)] let result = FreeLibrary(module);
+        #[cfg(unix)] let result = dlclose(module);
+        result
+    }
 }
 
 #[cfg(windows)] const ERROR_BAD_EXE_FORMAT : i32 = 0x00C1;
@@ -204,6 +211,7 @@ impl Library {
 #[cfg(windows)] extern "system" {
     fn GetProcAddress(hModule: *mut c_void, lpProcName: *const c_char) -> *mut c_void;
     fn LoadLibraryW(lpFileName: *const u16) -> *mut c_void;
+    fn FreeLibrary(hModule: *mut c_void) -> *mut bool;
 }
 
 #[cfg(unix)] const RTLD_LAZY : c_int = 1;
@@ -211,4 +219,5 @@ impl Library {
     fn dlopen(filename: *const c_char, flags: c_int) -> *mut c_void;
     fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
     fn dlerror() -> *const c_char;
+    fn dlclose(handle: *mut c_void) -> c_int;
 }
