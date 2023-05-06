@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/minidl.svg)](https://crates.io/crates/minidl)
 [![Docs](https://docs.rs/minidl/badge.svg)](https://docs.rs/minidl/)
-[![unsafe: yes](https://img.shields.io/github/search/MaulingMonkey/minidl/unsafe%2bextension%3Ars?color=yellow&label=unsafe)](https://github.com/MaulingMonkey/minidl/search?q=unsafe+extension%3Ars)
+[![unsafe: yes](https://img.shields.io/badge/unsafe-yes-yellow.svg)](https://github.com/MaulingMonkey/minidl/search?q=unsafe+path%3Ars)
 [![rust: stable](https://img.shields.io/badge/rust-stable-yellow.svg)](https://gist.github.com/MaulingMonkey/c81a9f18811079f19326dac4daa5a359#minimum-supported-rust-versions-msrv)
 [![License](https://img.shields.io/crates/l/minidl.svg)](https://github.com/MaulingMonkey/minidl)
 <br>
