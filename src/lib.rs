@@ -73,6 +73,10 @@ impl Library {
         }
     }
 
+    pub fn from_handle(handle: *mut c_void) -> Result<Self> {
+        Ok(Self(handle))
+    }
+
     /// Load a symbol from the library.
     /// Note that the symbol name must end with '\0'.
     /// Limiting yourself to basic ASCII is also likely wise.
