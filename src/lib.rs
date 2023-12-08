@@ -143,7 +143,7 @@ impl Library {
     /// | <strike>Unix</strike> | `Err(...)`
     pub unsafe fn sym_by_ordinal<T>(self, ordinal: u16) -> io::Result<T> {
         self.sym_opt_by_ordinal(ordinal).ok_or_else(||{
-            io::Error::new(io::ErrorKind::InvalidInput, format!("Symbol @{ordinal} missing from library"))
+            io::Error::new(io::ErrorKind::InvalidInput, format!("Symbol @{} missing from library", ordinal))
         })
     }
 
