@@ -15,10 +15,12 @@ jobs:
     runs-on: windows-2019
     steps:
     - uses: actions/checkout@v2
-    - name: Info
+    - name: Sync / Info
       run: |
         rustc -V
         cargo -V
+        rustc +stable -V
+        cargo +stable -V
         cmd /C ver
     - name: Test (MSRV)
       run: cargo test
@@ -29,10 +31,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Info
+    - name: Sync / Info
       run: |
         rustc -V
         cargo -V
+        rustc +stable -V
+        cargo +stable -V
+        cat /proc/version /etc/*-release
     - name: Test (MSRV)
       run: cargo test
     - name: Test (Stable)
