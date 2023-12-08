@@ -16,7 +16,6 @@ Extremely lean cross platform library for loading symbols.
 * No dependencies (minimal build times)
 * No macros (minimal build times)
 * No safety (ABI mismatches would be unsound anyways)
-* No unloading (would be unsound if the library spawned threads anyways)
 
 ## Quick Start
 

@@ -38,6 +38,13 @@ impl Example {
     assert!(e.contains("does_not_exist_invalid"), "{}", e);
 }
 
+#[test] fn load_unload() {
+    if !std::env::var_os("CI").is_some() {
+        let lib = Library::load("/lib/x86_64-linux-gnu/libc.so.6").expect("loading libc.so.6");
+        unsafe { lib.close_unsafe_unsound_possible_noop_do_not_use_in_production() }.expect("unloading libc.so.6");
+    }
+}
+
 #[test] fn bad_sym() {
     let e = Example::new().expect_err("Example should've failed to load invalid_required");
     let e = format!("{}", e);
