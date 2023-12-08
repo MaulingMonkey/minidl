@@ -20,6 +20,19 @@ pub struct Library(NonNull<c_void>);
 unsafe impl Send for Library {}
 unsafe impl Sync for Library {}
 
+/// *   Constructors
+///     *   [`Library::load`]               &mdash; Load a library, forever, or return <code>[Err]\([io::Error])</code>.
+/// *   Symbols (most of these functions implicitly transmute! Use extreme caution.)
+///     *   [`Library::has_sym`]            &mdash; Check if a symbol, `"name\0"`, exists in the library.
+///     *   [`Library::sym`]                &mdash; Load a symbol from the library by `"name\0"`, or return <code>[Err]\([io::Error])</code>.
+///     *   [`Library::sym_opt`]            &mdash; Load a symbol from the library by `"name\0"`, or return [`None`].
+///     *   [`Library::sym_by_ordinal`]     &mdash; Load a symbol from the library by windows ordinal, or return <code>[Err]\([io::Error])</code>.
+///     *   [`Library::sym_opt_by_ordinal`] &mdash; Load a symbol from the library by windows ordinal, or return [`None`].
+/// *   Interop
+///     *   [`Library::from_ptr`]           &mdash; Wrap a forever-loaded library in [`Library`] for interop purpouses.
+///     *   [`Library::from_non_null`]      &mdash; Wrap a forever-loaded library in [`Library`] for interop purpouses.
+///     *   [`Library::as_ptr`]             &mdash; Return a raw handle pointer for interop purpouses.
+///     *   [`Library::as_non_null`]        &mdash; Return a raw handle pointer for interop purpouses.
 impl Library {
     /// Load a library, forever.
     ///
