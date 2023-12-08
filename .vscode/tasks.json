@@ -6,7 +6,22 @@
     "options": { "cwd": "${workspaceFolder}", "env": { "RUST_BACKTRACE": "1" } },
     "tasks": [
         { "group": { "kind": "build", "isDefault": true }, "label": "scripts\\test", "command": "scripts\\test" },
-        { "label": "Open local docs", "command": "start \"\" target\\doc\\minidl\\index.html" },
         { "label": "help", "command": "cargo +stable doc --open" },
+
+        // minidl
+        {
+            "label":            "open repository (minidl)",
+            "windows":          { "command": "start \"\"    \"https://github.com/MaulingMonkey/minidl\"" },
+            "linux":            { "command": "xdg-open      \"https://github.com/MaulingMonkey/minidl\"" },
+            "osx":              { "command": "open          \"https://github.com/MaulingMonkey/minidl\"" },
+            "presentation":     { "clear": true, "panel": "shared", "reveal": "silent" },
+        },
+        {
+            "label":            "open documentation (minidl)",
+            "windows":          { "command": "start \"\"    \"https://docs.rs/minidl\"" },
+            "linux":            { "command": "xdg-open      \"https://docs.rs/minidl\"" },
+            "osx":              { "command": "open          \"https://docs.rs/minidl\"" },
+            "presentation":     { "clear": true, "panel": "shared", "reveal": "silent" },
+        },
     ]
 }
