@@ -20,8 +20,10 @@ jobs:
         rustc -V
         cargo -V
         cmd /C ver
-    - name: Test
+    - name: Test (MSRV)
       run: cargo test
+    - name: Test (Stable)
+      run: cargo +stable test
   linux:
     name: Ubuntu Latest
     runs-on: ubuntu-latest
@@ -31,5 +33,7 @@ jobs:
       run: |
         rustc -V
         cargo -V
-    - name: Test
+    - name: Test (MSRV)
       run: cargo test
+    - name: Test (Stable)
+      run: cargo +stable test

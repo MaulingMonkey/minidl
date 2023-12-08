@@ -6,3 +6,5 @@ function print_run {
 
 print_run cargo build --all || exit 1
 print_run cargo test  --all || exit 1
+print_run cargo +stable build --all || exit 1
+print_run cargo +stable test  --all || exit 1
