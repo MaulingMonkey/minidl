@@ -16,7 +16,7 @@ pub type Result<T> = std::io::Result<T>;
 /// A loaded library handle.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct Library(*mut c_void);
+pub struct Library(NonNull<c_void>);
 unsafe impl Send for Library {}
 unsafe impl Sync for Library {}
 
@@ -43,7 +43,7 @@ impl Library {
             unsafe { dlopen(filename.as_ptr() as _, RTLD_LAZY) }
         };
 
-        if handle != null_mut() {
+        if let Some(handle) = NonNull::new(handle) {
             Ok(Self(handle))
         } else {
             #[cfg(windows)] {
@@ -72,6 +72,54 @@ impl Library {
             }
         }
     }
+
+    /// Wrap a forever-loaded library in [`Library`] for interop purpouses.
+    ///
+    /// Wrap a [`winapi::shared::minwindef::HMODULE`](https://docs.rs/winapi/0.3/winapi/shared/minwindef/type.HMODULE.html) with `Library::from_ptr(handle.cast())`.<br>
+    /// Wrap a [`windows::Win32::Foundation::HMODULE`](https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Foundation/struct.HMODULE.html) with `Library::from_ptr(handle.0 as _)`.
+    ///
+    /// # Safety
+    ///
+    /// If `handle` is not null, it is expected to be a valid library handle for the duration of the program.
+    ///
+    /// # Platform
+    ///
+    /// | OS        | Expects   |
+    /// | --------- | --------- |
+    /// | Windows   | [`libloaderapi.h`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/)-compatible `HMODULE`
+    /// | Unix      | [`dlfcn.h`](https://pubs.opengroup.org/onlinepubs/7908799/xsh/dlfcn.h.html)-compatible handle
+    pub unsafe fn from_ptr(handle: *mut c_void) -> Option<Self> { Some(Self::from_non_null(NonNull::new(handle)?)) }
+
+    /// Wrap a forever-loaded library in [`Library`] for interop purpouses.
+    ///
+    /// # Safety
+    ///
+    /// `handle` is expected to be a valid library handle for the duration of the program.
+    ///
+    /// # Platform
+    ///
+    /// | OS        | Expects   |
+    /// | --------- | --------- |
+    /// | Windows   | [`libloaderapi.h`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/)-compatible `HMODULE`
+    /// | Unix      | [`dlfcn.h`](https://pubs.opengroup.org/onlinepubs/7908799/xsh/dlfcn.h.html)-compatible handle
+    pub unsafe fn from_non_null(handle: NonNull<c_void>) -> Self { Self(handle) }
+
+    /// Return a raw handle pointer for interop purpouses.
+    ///
+    /// Acquire a [`winapi::shared::minwindef::HMODULE`](https://docs.rs/winapi/0.3/winapi/shared/minwindef/type.HMODULE.html) with `handle.as_ptr() as HMODULE`.<br>
+    /// Acquire a [`windows::Win32::Foundation::HMODULE`](https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Foundation/struct.HMODULE.html) with `HMODULE(handle.as_ptr() as _)`.
+    ///
+    /// # Safety
+    ///
+    /// Don't use this pointer to unload the library.
+    pub fn as_ptr(&self) -> *mut c_void { self.0.as_ptr() }
+
+    /// Return a raw handle pointer for interop purpouses.
+    ///
+    /// # Safety
+    ///
+    /// Don't use this pointer to unload the library.
+    pub fn as_non_null(&self) -> NonNull<c_void> { self.0 }
 
     /// Load a symbol from the library.
     /// Note that the symbol name must end with '\0'.
@@ -110,7 +158,7 @@ impl Library {
     /// | Unix      | `dlsym(..., name)`
     pub unsafe fn sym_opt<'a, T>(&self, name: impl AsRef<str>) -> Option<T> {
         let name = name.as_ref();
-        let module = self.0;
+        let module = self.as_ptr();
         let n = name.len();
         assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
         assert!(name.ends_with('\0'),           "symbol name must end with '\0'");
@@ -168,7 +216,7 @@ impl Library {
         //  * `hModule`     ✔️ is a valid, non-dangling, loaded hmodule
         //  * `lpProcName`  ✔️ is a WORD/u16, meeting GetProcAddress's documented requirement:
         //                  "If this parameter is an ordinal value, it must be in the low-order word; the high-order word must be zero."
-        #[cfg(windows)] let func = GetProcAddress(self.0, ordinal as usize as *const _);
+        #[cfg(windows)] let func = GetProcAddress(self.as_ptr(), ordinal as usize as *const _);
         #[cfg(unix)] let func = null_mut::<c_void>();
         #[cfg(unix)] let _ = ordinal;
 
@@ -290,11 +338,11 @@ impl Library {
     /// | Windows   | `FreeLibrary(...)`
     /// | Unix      | `dlclose(...)`
     pub unsafe fn close_unsafe_unsound_possible_noop_do_not_use_in_production(self) -> io::Result<()> {
-        #[cfg(windows)] match FreeLibrary(self.0) {
+        #[cfg(windows)] match FreeLibrary(self.as_ptr()) {
             0 => Err(io::Error::last_os_error()),
             _ => Ok(()), // "If the function succeeds, the return value is nonzero." (https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-freelibrary)
         }
-        #[cfg(unix)] match dlclose(self.0) {
+        #[cfg(unix)] match dlclose(self.as_ptr()) {
             0 => Ok(()), // "The function dlclose() returns 0 on success, and nonzero on error." (https://linux.die.net/man/3/dlclose)
             _ => Err(io::Error::new(io::ErrorKind::Other, dlerror_string_lossy()))
         }
