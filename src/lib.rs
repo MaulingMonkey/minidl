@@ -69,7 +69,7 @@ impl Library {
         } else {
             #[cfg(windows)] {
                 let err = Error::last_os_error();
-                match err.raw_os_error() {
+                match err.raw_os_error().map(|c| windows::Error(c as _)) {
                     Some(ERROR_BAD_EXE_FORMAT) => {
                         Err(io::Error::new(io::ErrorKind::Other, format!(
                             "Unable to load {path}: ERROR_BAD_EXE_FORMAT (likely tried to load a {that}-bit DLL into this {this}-bit process)",
@@ -346,14 +346,14 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `FreeLibrary(...)`
     /// | Unix      | `dlclose(...)`
-    pub unsafe fn close_unsafe_unsound_possible_noop_do_not_use_in_production(self) -> io::Result<()> {
+    pub unsafe fn close_unsafe_unsound_possible_noop_do_not_use_in_production(self) -> core::result::Result<(), UnloadLibraryError> {
         #[cfg(windows)] match FreeLibrary(self.as_ptr()) {
-            0 => Err(io::Error::last_os_error()),
+            0 => Err(UnloadLibraryError { error: windows::Error::get_last() }),
             _ => Ok(()), // "If the function succeeds, the return value is nonzero." (https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-freelibrary)
         }
         #[cfg(unix)] match dlclose(self.as_ptr()) {
             0 => Ok(()), // "The function dlclose() returns 0 on success, and nonzero on error." (https://linux.die.net/man/3/dlclose)
-            _ => Err(io::Error::new(io::ErrorKind::Other, dlerror_string_lossy()))
+            _ => Err(UnloadLibraryError { dlerror: std::sync::Arc::from(CStr::from_ptr(dlerror()).to_string_lossy()) }),
         }
     }
 }

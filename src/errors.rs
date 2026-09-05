@@ -30,3 +30,32 @@ impl<'a> From<MissingSymbolError<'a>> for std::io::Error {
         std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{value}"))
     }
 }
+
+
+
+
+/// A [`Library`] failed to unload.
+///
+/// ## Returned by
+/// -   [`Library::close_unsafe_unsound_possible_noop_do_not_use_in_production`]
+///
+#[derive(Clone, Debug)] pub struct UnloadLibraryError {
+    #[cfg(unix)]    pub(crate) dlerror: std::sync::Arc<str>,
+    #[cfg(windows)] pub(crate) error: windows::Error,
+
+    #[cfg(not(any(unix, windows)))] pub(crate) _non_exhaustive: (),
+}
+
+impl Display for UnloadLibraryError {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        #[cfg(unix      )] return write!(fmt, "could not unload library: {}", self.dlerror);
+        #[cfg(windows   )] return write!(fmt, "could not unload library (error code: {:?})", self.error);
+        // other platforms: NYI
+    }
+}
+
+impl From<UnloadLibraryError> for std::io::Error {
+    fn from(_error: UnloadLibraryError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, "could not unload library") // TODO: preserve more information
+    }
+}
