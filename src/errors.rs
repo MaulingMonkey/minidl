@@ -16,13 +16,17 @@ use core::fmt::{self, Debug, Display, Formatter};
     pub(crate) symbol: Symbol<'a>,
 }
 
-impl<'a> Display for MissingSymbolError<'a> {
+impl Display for MissingSymbolError<'_> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         match self.symbol {
             Symbol::Name(name)          => write!(fmt, "Symbol {name:?} missing from library"),
             Symbol::Ordinal(ordinal)    => write!(fmt, "Symbol @{ordinal} missing from library"),
         }
     }
+}
+
+impl std::error::Error for MissingSymbolError<'_> {
+    fn description(&self) -> &str { "symbol missing from library" }
 }
 
 impl<'a> From<MissingSymbolError<'a>> for std::io::Error {
@@ -54,8 +58,12 @@ impl Display for UnloadLibraryError {
     }
 }
 
+impl std::error::Error for UnloadLibraryError {
+    fn description(&self) -> &str { "could not unload library" }
+}
+
 impl From<UnloadLibraryError> for std::io::Error {
-    fn from(_error: UnloadLibraryError) -> Self {
-        std::io::Error::new(std::io::ErrorKind::Other, "could not unload library") // TODO: preserve more information
+    fn from(error: UnloadLibraryError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, error)
     }
 }
