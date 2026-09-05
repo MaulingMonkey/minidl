@@ -1,5 +1,6 @@
 #![doc = include_str!("../Readme.md")]
 
+pub mod errors; #[doc(hidden)] pub use errors::*;
 #[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
 #[cfg(windows)] mod windows; #[cfg(windows)] use windows::*;
 
@@ -26,11 +27,11 @@ unsafe impl Sync for Library {}
 /// *   Constructors
 ///     *   [`Library::load`]               &mdash; Load a library, forever, or return <code>[Err]\([io::Error])</code>.
 /// *   Symbols (most of these functions implicitly transmute! Use extreme caution.)
-///     *   [`Library::has_sym`]            &mdash; Check if a symbol, `"name\0"`, exists in the library.
-///     *   [`Library::sym`]                &mdash; Load a symbol from the library by `"name\0"`, or return <code>[Err]\([io::Error])</code>.
-///     *   [`Library::sym_opt`]            &mdash; Load a symbol from the library by `"name\0"`, or return [`None`].
-///     *   [`Library::sym_by_ordinal`]     &mdash; Load a symbol from the library by windows ordinal, or return <code>[Err]\([io::Error])</code>.
-///     *   [`Library::sym_opt_by_ordinal`] &mdash; Load a symbol from the library by windows ordinal, or return [`None`].
+///     *   [`Library::has_sym`]            &mdash; Check if a symbol, `c"name"`, exists in the library.
+///     *   [`Library::sym`]                &mdash; Load a symbol from the library by `c"name"`, or return <code>[Err]\([MissingSymbolError])</code>.
+///     *   [`Library::sym_opt`]            &mdash; Load a symbol from the library by `c"name"`, or return [`None`].
+///     *   [`Library::sym_by_ordinal`]     &mdash; Load a symbol from the library by ordinal, or return <code>[Err]\([MissingSymbolError])</code>.
+///     *   [`Library::sym_opt_by_ordinal`] &mdash; Load a symbol from the library by ordinal, or return [`None`].
 /// *   Interop
 ///     *   [`Library::from_ptr`]           &mdash; Wrap a forever-loaded library in [`Library`] for interop purpouses.
 ///     *   [`Library::from_non_null`]      &mdash; Wrap a forever-loaded library in [`Library`] for interop purpouses.
@@ -138,8 +139,7 @@ impl Library {
     pub fn as_non_null(&self) -> NonNull<c_void> { self.0 }
 
     /// Load a symbol from the library.
-    /// Note that the symbol name must end with '\0'.
-    /// Limiting yourself to basic ASCII is also likely wise.
+    /// Limiting symbol names to basic ASCII is likely wise.
     ///
     /// # Safety
     ///
@@ -151,16 +151,12 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
-    pub unsafe fn sym<'a, T>(&self, name: impl AsRef<CStr>) -> io::Result<T> {
-        let name = name.as_ref();
-        self.sym_opt(name).ok_or_else(||{
-            io::Error::new(io::ErrorKind::InvalidInput, format!("Symbol {name:?} missing from library"))
-        })
+    pub unsafe fn sym<'a, T>(&self, name: &'a CStr) -> core::result::Result<T, MissingSymbolError<'a>> {
+        self.sym_opt(name).ok_or_else(|| MissingSymbolError { symbol: Symbol::Name(name) })
     }
 
     /// Load a symbol from the library.
-    /// Note that the symbol name must end with '\0'.
-    /// Limiting yourself to basic ASCII is also likely wise.
+    /// Limiting symbol names to basic ASCII is likely wise.
     ///
     /// # Safety
     ///
@@ -172,8 +168,7 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
-    pub unsafe fn sym_opt<'a, T>(&self, name: impl AsRef<CStr>) -> Option<T> {
-        let name = name.as_ref();
+    pub unsafe fn sym_opt<'a, T>(&self, name: &CStr) -> Option<T> {
         let module = self.as_ptr();
         assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
 
@@ -202,10 +197,8 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(ordinal))`
     /// | <strike>Unix</strike> | `Err(...)`
-    pub unsafe fn sym_by_ordinal<T>(self, ordinal: u16) -> io::Result<T> {
-        self.sym_opt_by_ordinal(ordinal).ok_or_else(||{
-            io::Error::new(io::ErrorKind::InvalidInput, format!("Symbol @{} missing from library", ordinal))
-        })
+    pub unsafe fn sym_by_ordinal<T>(self, ordinal: u16) -> core::result::Result<T, MissingSymbolError<'static>> {
+        self.sym_opt_by_ordinal(ordinal).ok_or_else(||MissingSymbolError { symbol: Symbol::Ordinal(ordinal) })
     }
 
     /// Load a symbol from the library by ordinal.
@@ -244,8 +237,7 @@ impl Library {
     }
 
     /// Check if a symbol existing in the library.
-    /// Note that the symbol name must end with '\0'.
-    /// Limiting yourself to basic ASCII is also likely wise.
+    /// Limiting symbol names to basic ASCII is likely wise.
     ///
     /// # Platform
     ///
@@ -253,7 +245,7 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `!!GetProcAddress(..., name)`
     /// | Unix      | `!!dlsym(..., name)`
-    pub fn has_sym(self, name: impl AsRef<CStr>) -> bool {
+    pub fn has_sym(self, name: &CStr) -> bool {
         // SAFETY: ✔️ cast to `*mut c_void` should always be safe.
         let s : Option<*mut c_void> = unsafe { self.sym_opt(name) };
         s.is_some()
@@ -360,4 +352,9 @@ impl Library {
             _ => Err(io::Error::new(io::ErrorKind::Other, dlerror_string_lossy()))
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Symbol<'a> {
+    Name(&'a CStr),
+    Ordinal(u16), // windows only
 }
