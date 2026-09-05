@@ -1,6 +1,9 @@
 #![doc = include_str!("../Readme.md")]
 
-#[allow(unused_imports)] use core::ffi::{CStr, c_char, c_int, c_void};
+#[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
+#[cfg(windows)] mod windows; #[cfg(windows)] use windows::*;
+
+use core::ffi::{CStr, c_void};
 use core::mem::size_of;
 use core::ptr::{NonNull, null_mut};
 
@@ -357,25 +360,4 @@ impl Library {
             _ => Err(io::Error::new(io::ErrorKind::Other, dlerror_string_lossy()))
         }
     }
-}
-
-#[cfg(windows)] const ERROR_BAD_EXE_FORMAT : i32 = 0x00C1;
-#[cfg(windows)] const ERROR_MOD_NOT_FOUND  : i32 = 0x007E;
-#[cfg(windows)] extern "system" {
-    fn GetProcAddress(hModule: *mut c_void, lpProcName: *const c_char) -> *mut c_void;
-    fn LoadLibraryW(lpFileName: *const u16) -> *mut c_void;
-    fn FreeLibrary(hModule: *mut c_void) -> u32;
-}
-
-#[cfg(unix)] fn dlerror_string_lossy() -> String {
-    let e = unsafe { dlerror() };
-    if e.is_null() { String::new() } else { unsafe { std::ffi::CStr::from_ptr(e) }.to_string_lossy().into() }
-}
-
-#[cfg(unix)] const RTLD_LAZY : c_int = 1;
-#[cfg(unix)] extern "C" {
-    fn dlopen(filename: *const c_char, flags: c_int) -> *mut c_void;
-    fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
-    fn dlerror() -> *const c_char;
-    fn dlclose(handle: *mut c_void) -> c_int;
 }
