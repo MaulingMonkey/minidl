@@ -32,8 +32,8 @@ impl Example {
     pub fn new() -> Result<Self> {
         let lib = Library::load("kernel32.dll")?;
         unsafe{Ok(Self{
-            OutputDebugStringA: lib.sym("OutputDebugStringA\0")?,
-            Invalid_Optional:   lib.sym_opt("Invalid_Optional\0"),
+            OutputDebugStringA: lib.sym(c"OutputDebugStringA")?,
+            Invalid_Optional:   lib.sym_opt(c"Invalid_Optional"),
         })}
     }
 }

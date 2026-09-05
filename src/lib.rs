@@ -1,11 +1,11 @@
 #![doc = include_str!("../Readme.md")]
 
-use std::ffi::c_void;
-use std::mem::size_of;
-use std::os::raw::*;
+#[allow(unused_imports)] use core::ffi::{CStr, c_char, c_int, c_void};
+use core::mem::size_of;
+use core::ptr::{NonNull, null_mut};
+
 use std::io;
 use std::path::Path;
-use std::ptr::*;
 
 /// The error type of this library, [std::io::Error](https://doc.rust-lang.org/std/io/struct.Error.html)
 pub type Error = std::io::Error;
@@ -148,10 +148,10 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
-    pub unsafe fn sym<'a, T>(&self, name: impl AsRef<str>) -> io::Result<T> {
+    pub unsafe fn sym<'a, T>(&self, name: impl AsRef<CStr>) -> io::Result<T> {
         let name = name.as_ref();
         self.sym_opt(name).ok_or_else(||{
-            io::Error::new(io::ErrorKind::InvalidInput, format!("Symbol {:?} missing from library", &name[..name.len()-1]))
+            io::Error::new(io::ErrorKind::InvalidInput, format!("Symbol {name:?} missing from library"))
         })
     }
 
@@ -169,13 +169,10 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
-    pub unsafe fn sym_opt<'a, T>(&self, name: impl AsRef<str>) -> Option<T> {
+    pub unsafe fn sym_opt<'a, T>(&self, name: impl AsRef<CStr>) -> Option<T> {
         let name = name.as_ref();
         let module = self.as_ptr();
-        let n = name.len();
         assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
-        assert!(name.ends_with('\0'),           "symbol name must end with '\0'");
-        assert!(!name[..n-1].contains('\0'),    "symbol name mustn't contain '\0's, except to terminate the string");
 
         let cname = name.as_ptr() as _;
         #[cfg(windows)] let result = GetProcAddress(module, cname);
@@ -253,7 +250,7 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `!!GetProcAddress(..., name)`
     /// | Unix      | `!!dlsym(..., name)`
-    pub fn has_sym(self, name: impl AsRef<str>) -> bool {
+    pub fn has_sym(self, name: impl AsRef<CStr>) -> bool {
         // SAFETY: ✔️ cast to `*mut c_void` should always be safe.
         let s : Option<*mut c_void> = unsafe { self.sym_opt(name) };
         s.is_some()

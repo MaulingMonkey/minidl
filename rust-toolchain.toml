@@ -1,7 +1,6 @@
 # https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file
 
 [toolchain]
-channel = "1.54" # MSRV
+channel = "1.77" # https://doc.rust-lang.org/edition-guide/rust-2021/c-string-literals.html
 profile = "minimal"
-# components = ["rust-analyzer", "rust-src"]
-# targets = ["wasm32-unknown-unknown", "wasm32-wasi"]
+components = ["rust-analyzer"]

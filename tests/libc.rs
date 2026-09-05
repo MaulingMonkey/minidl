@@ -25,9 +25,9 @@ impl Example {
 
     pub fn from(lib: Library) -> Result<Self> {
         unsafe{Ok(Self{
-            puts:               lib.sym("puts\0")?,
-            invalid_optional:   lib.sym_opt("invalid_optional\0"),
-            invalid_required:   lib.sym("invalid_required\0")?,
+            puts:               lib.sym(c"puts")?,
+            invalid_optional:   lib.sym_opt(c"invalid_optional"),
+            invalid_required:   lib.sym(c"invalid_required")?,
         })}
     }
 }
@@ -56,7 +56,7 @@ impl Example {
     unsafe {
         let puts : unsafe extern "C" fn (_: *const c_char) -> c_int
             = Library::load("/lib/x86_64-linux-gnu/libc.so.6").unwrap()
-            .sym("puts\0").unwrap();
+            .sym(c"puts").unwrap();
 
         puts(b"Hello, world!\0".as_ptr() as _);
     }

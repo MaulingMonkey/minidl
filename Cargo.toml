@@ -7,13 +7,13 @@ authors         = ["MaulingMonkey <git@maulingmonkey.com>"]
 description     = "Extremely lean cross platform library for loading symbols"
 repository      = "https://github.com/MaulingMonkey/minidl"
 documentation   = "https://docs.rs/minidl"
-edition         = "2018"
+edition         = "2021" # https://doc.rust-lang.org/edition-guide/rust-2021/c-string-literals.html
 keywords        = ["dlopen", "LoadLibrary", "dlsym", "dll", "so"]
 categories      = ["external-ffi-bindings"]
 license         = "MIT OR Apache-2.0"
 readme          = "Readme.md"
 include         = ["/**/*.rs", "/Cargo.toml", "/LICENSE-MIT", "/LICENSE-APACHE", "Readme.md"]
-rust-version    = "1.54" # https://blog.rust-lang.org/2021/07/29/Rust-1.54.0.html#attributes-can-invoke-function-like-macros
+rust-version    = "1.77" # https://doc.rust-lang.org/edition-guide/rust-2021/c-string-literals.html
 
 [badges]
 maintenance = { status = "experimental" }

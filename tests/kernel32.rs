@@ -20,9 +20,9 @@ impl Example {
 
     pub fn from(lib: Library) -> Result<Self> {
         unsafe{Ok(Self{
-            OutputDebugStringA: lib.sym("OutputDebugStringA\0")?,
-            Invalid_Optional:   lib.sym_opt("Invalid_Optional\0"),
-            Invalid_Required:   lib.sym("Invalid_Required\0")?,
+            OutputDebugStringA: lib.sym(c"OutputDebugStringA")?,
+            Invalid_Optional:   lib.sym_opt(c"Invalid_Optional"),
+            Invalid_Required:   lib.sym(c"Invalid_Required")?,
         })}
     }
 }
@@ -50,8 +50,8 @@ impl Debug for Example {
     unsafe {
         let OutputDebugStringA : unsafe extern "system" fn (_: *const c_char)
             = Library::load("kernel32.dll").unwrap()
-            .sym("OutputDebugStringA\0").unwrap();
+            .sym(c"OutputDebugStringA").unwrap();
 
-        OutputDebugStringA(b"Hello, world!\0".as_ptr() as _);
+        OutputDebugStringA(c"Hello, world!".as_ptr() as _);
     }
 }

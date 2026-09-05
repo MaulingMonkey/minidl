@@ -15,7 +15,7 @@ impl XInput {
     pub fn new() -> Result<Self> { Self::from(Library::load("xinput1_3.dll")?) }
     pub fn from(lib: Library) -> Result<Self> {
         unsafe{Ok(Self{
-            XInputGetState:     lib.sym("XInputGetState\0")?,
+            XInputGetState:     lib.sym(c"XInputGetState")?,
             XInputGetStateEx:   lib.sym_by_ordinal(100)?,
         })}
     }
