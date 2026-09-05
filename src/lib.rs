@@ -8,8 +8,7 @@ use core::ffi::{CStr, c_void};
 use core::mem::size_of;
 use core::ptr::{NonNull, null_mut};
 
-use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The error type of this library, [std::io::Error](https://doc.rust-lang.org/std/io/struct.Error.html)
 pub type Error = std::io::Error;
@@ -20,7 +19,7 @@ pub type Result<T> = std::io::Result<T>;
 /// A loaded library handle.
 ///
 /// # Constructors
-/// -   [`Library::load`]               &mdash; Load a library, forever, or return <code>[Err]\([io::Error])</code>.
+/// -   [`Library::load`]               &mdash; Load a library, forever, or return <code>[Err]\([std::io::Error])</code>.
 ///
 /// # Symbols (most of these functions implicitly transmute! Use extreme caution.)
 /// -   [`Library::has_sym`]            &mdash; Check if a symbol, `c"name"`, exists in the library.
@@ -48,50 +47,29 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `LoadLibraryW(path)`
     /// | Unix      | `dlopen(path, ...)`
-    pub fn load(path: impl AsRef<Path>) -> Result<Self> {
+    pub fn load(path: impl AsRef<Path> + Into<PathBuf>) -> core::result::Result<Self, LoadLibraryError> {
         let path = path.as_ref();
 
-        #[cfg(windows)] let handle = {
+        #[cfg(windows)] return {
             use std::os::windows::ffi::OsStrExt;
             let filename = path.as_os_str().encode_wide().chain([0].iter().copied()).collect::<Vec<u16>>();
-            unsafe { LoadLibraryW(filename.as_ptr()) }
+            match NonNull::new(unsafe { LoadLibraryW(filename.as_ptr()) }) {
+                Some(handle)    => Ok(Self(handle)),
+                None            => Err(LoadLibraryError { error: windows::Error::get_last(), path: path.into() }),
+            }
         };
 
-        #[cfg(unix)] let handle = {
+        #[cfg(unix)] return {
             use std::os::unix::ffi::OsStrExt;
             let filename = path.as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<Vec<u8>>();
             let _ = unsafe { dlerror() }; // clear error code
-            unsafe { dlopen(filename.as_ptr() as _, RTLD_LAZY) }
+            match NonNull::new(unsafe { dlopen(filename.as_ptr() as _, RTLD_LAZY) }) {
+                Some(handle)    => Ok(Self(handle)),
+                None            => Err(LoadLibraryError { dlerror: std::sync::Arc::from(unsafe { CStr::from_ptr(dlerror()) }.to_string_lossy()) }),
+            }
         };
 
-        if let Some(handle) = NonNull::new(handle) {
-            Ok(Self(handle))
-        } else {
-            #[cfg(windows)] {
-                let err = Error::last_os_error();
-                match err.raw_os_error().map(|c| windows::Error(c as _)) {
-                    Some(ERROR_BAD_EXE_FORMAT) => {
-                        Err(io::Error::new(io::ErrorKind::Other, format!(
-                            "Unable to load {path}: ERROR_BAD_EXE_FORMAT (likely tried to load a {that}-bit DLL into this {this}-bit process)",
-                            path = path.display(),
-                            this = if cfg!(target_arch = "x86_64") { "64" } else { "32" },
-                            that = if cfg!(target_arch = "x86_64") { "32" } else { "64" },
-                        )))
-                    },
-                    Some(ERROR_MOD_NOT_FOUND) => {
-                        Err(io::Error::new(io::ErrorKind::NotFound, format!(
-                            "Unable to load {path}: NotFound",
-                            path = path.display(),
-                        )))
-                    },
-                    _ => Err(err)
-                }
-            }
-            #[cfg(unix)] {
-                // dlerror already contains path info
-                Err(io::Error::new(io::ErrorKind::Other, dlerror_string_lossy()))
-            }
-        }
+        #[cfg(not(any(unix, windows)))] LoadLibraryError { _not_supported: () }
     }
 
     /// Wrap a forever-loaded library in [`Library`] for interop purpouses.

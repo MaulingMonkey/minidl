@@ -1,9 +1,4 @@
-use core::ffi::{CStr, c_char, c_int, c_void};
-
-pub(crate) fn dlerror_string_lossy() -> String {
-    let e = unsafe { dlerror() };
-    if e.is_null() { String::new() } else { unsafe { CStr::from_ptr(e) }.to_string_lossy().into() }
-}
+use core::ffi::{c_char, c_int, c_void};
 
 pub(crate) const RTLD_LAZY : c_int = 1;
 extern "C" {
