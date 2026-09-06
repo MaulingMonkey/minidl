@@ -11,28 +11,36 @@ use core::fmt::{self, Debug, Display, Formatter};
 /// ## Returned by
 /// -   [`Library::load`]
 ///
-#[derive(Clone, Debug)] pub struct LoadLibraryError {
-    #[cfg(unix)]    pub(crate) dlerror: std::sync::Arc<str>,
-    #[cfg(windows)] pub(crate) error:   windows::Error,
-    #[cfg(windows)] pub(crate) path:    std::path::PathBuf,
-
-    #[cfg(not(any(unix, windows)))] pub(crate) _not_supported: (),
+#[derive(Clone, Debug)] #[non_exhaustive] pub struct LoadLibraryError {
+    #[cfg(all(unix, feature = "alloc"   ))] pub(crate) dlerror: alloc::sync::Arc<str>,
+    #[cfg(all(windows                   ))] pub(crate) error:   windows::Error,
+    #[cfg(all(windows, feature = "std"  ))] pub(crate) path:    std::path::PathBuf,
 }
 
 impl Display for LoadLibraryError {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        #[cfg(unix)] return write!(fmt, "could not load library: {}", self.dlerror);
+        #[cfg(unix)] {
+            #[cfg(    feature = "alloc" )] return write!(fmt, "could not load library: {}", self.dlerror);
+            #[cfg(not(feature = "alloc"))] return write!(fmt, "could not load library");
+        }
+
         #[cfg(windows)] {
-            let path = self.path.display();
-            return match self.error {
-                ERROR_BAD_EXE_FORMAT    => write!(fmt, "could not load library: ERROR_BAD_EXE_FORMAT returned loading {path} (wrong architecture? x86 on x86-64 or vicea versa?)"),
-                error                   => write!(fmt, "could not load library: {error:?} returned loading {path}"),
+            #[cfg(feature = "std")] let path = self.path.display();
+
+            #[cfg(feature = "std")] return match self.error {
+                ERROR_BAD_EXE_FORMAT    => write!(fmt, "could not load library: ERROR_BAD_EXE_FORMAT loading {path} (wrong architecture? x86 on x86-64 or vicea versa?)"),
+                error                   => write!(fmt, "could not load library: {error:?} loading {path}"),
+            };
+
+            #[cfg(not(feature = "std"))] return match self.error {
+                ERROR_BAD_EXE_FORMAT    => write!(fmt, "could not load library: ERROR_BAD_EXE_FORMAT (wrong architecture? x86 on x86-64 or vicea versa?)"),
+                error                   => write!(fmt, "could not load library: {error:?}"),
             };
         }
     }
 }
 
-impl std::error::Error for LoadLibraryError {
+#[cfg(feature = "std")] impl std::error::Error for LoadLibraryError {
     fn description(&self) -> &str {
         #[cfg(unix)] return &*self.dlerror;
         #[cfg(windows)] return match self.error {
@@ -44,7 +52,7 @@ impl std::error::Error for LoadLibraryError {
     }
 }
 
-impl From<LoadLibraryError> for std::io::Error {
+#[cfg(feature = "std")] impl From<LoadLibraryError> for std::io::Error {
     fn from(error: LoadLibraryError) -> Self {
         use std::io::{Error, ErrorKind};
         #[cfg(unix)] return Error::new(ErrorKind::Other, error); // TODO: consider parsing `error.dlerror` for keywords to set ErrorKind? ...no, that's probably a bad idea
@@ -78,13 +86,13 @@ impl Display for MissingSymbolError<'_> {
     }
 }
 
-impl std::error::Error for MissingSymbolError<'_> {
+#[cfg(feature = "std")] impl std::error::Error for MissingSymbolError<'_> {
     fn description(&self) -> &str { "symbol missing from library" }
 }
 
-impl<'a> From<MissingSymbolError<'a>> for std::io::Error {
+#[cfg(feature = "std")] impl<'a> From<MissingSymbolError<'a>> for std::io::Error {
     fn from(value: MissingSymbolError<'a>) -> Self {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("{value}"))
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, std::format!("{value}"))
     }
 }
 
@@ -96,26 +104,27 @@ impl<'a> From<MissingSymbolError<'a>> for std::io::Error {
 /// ## Returned by
 /// -   [`Library::close_unsafe_unsound_possible_noop_do_not_use_in_production`]
 ///
-#[derive(Clone, Debug)] pub struct UnloadLibraryError {
-    #[cfg(unix)]    pub(crate) dlerror: std::sync::Arc<str>,
-    #[cfg(windows)] pub(crate) error: windows::Error,
-
-    #[cfg(not(any(unix, windows)))] pub(crate) _non_exhaustive: (),
+#[derive(Clone, Debug)] #[non_exhaustive] pub struct UnloadLibraryError {
+    #[cfg(all(unix, feature = "alloc"   ))] pub(crate) dlerror: alloc::sync::Arc<str>,
+    #[cfg(all(windows                   ))] pub(crate) error: windows::Error,
 }
 
 impl Display for UnloadLibraryError {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        #[cfg(unix      )] return write!(fmt, "could not unload library: {}", self.dlerror);
-        #[cfg(windows   )] return write!(fmt, "could not unload library (error code: {:?})", self.error);
+        #[cfg(unix)] {
+            #[cfg(    feature = "alloc" )] return write!(fmt, "could not unload library: {}", self.dlerror);
+            #[cfg(not(feature = "alloc"))] return write!(fmt, "could not unload library");
+        }
+        #[cfg(windows)] return write!(fmt, "could not unload library (error code: {:?})", self.error);
         // other platforms: NYI
     }
 }
 
-impl std::error::Error for UnloadLibraryError {
+#[cfg(feature = "std")] impl std::error::Error for UnloadLibraryError {
     fn description(&self) -> &str { "could not unload library" }
 }
 
-impl From<UnloadLibraryError> for std::io::Error {
+#[cfg(feature = "std")] impl From<UnloadLibraryError> for std::io::Error {
     fn from(error: UnloadLibraryError) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, error)
     }

@@ -1,6 +1,8 @@
 @pushd "%~dp0.."
 cargo build --all || goto :err
 cargo test  --all || goto :err
+cargo test  --all --no-default-features --features "alloc" || goto :err
+cargo test  --all --no-default-features --features ""      || goto :err
 cargo +stable build --all || goto :err
 cargo +stable test  --all || goto :err
 cargo +nightly doc --all || goto :err

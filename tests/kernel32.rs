@@ -1,4 +1,5 @@
 #![cfg(windows)]
+#![cfg(feature = "std")] // XXX
 #![allow(non_snake_case)]
 
 use minidl::*;

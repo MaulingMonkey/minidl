@@ -29,7 +29,8 @@ struct Example {
 }
 
 impl Example {
-    pub fn new() -> Result<Self> {
+    #[cfg(feature = "std")] // XXX: currently required for Library::load
+    pub fn new() -> std::io::Result<Self> {
         let lib = Library::load("kernel32.dll")?;
         unsafe{Ok(Self{
             OutputDebugStringA: lib.sym(c"OutputDebugStringA")?,

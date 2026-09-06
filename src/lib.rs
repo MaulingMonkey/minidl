@@ -1,4 +1,8 @@
 #![doc = include_str!("../Readme.md")]
+#![no_std]
+
+#[cfg(feature = "alloc")]   extern crate alloc;
+#[cfg(feature = "std")]     extern crate std;
 
 pub mod errors; #[doc(hidden)] pub use errors::*;
 #[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
@@ -7,14 +11,6 @@ pub mod errors; #[doc(hidden)] pub use errors::*;
 use core::ffi::{CStr, c_void};
 use core::mem::size_of;
 use core::ptr::{NonNull, null_mut};
-
-use std::path::{Path, PathBuf};
-
-/// The error type of this library, [std::io::Error](https://doc.rust-lang.org/std/io/struct.Error.html)
-pub type Error = std::io::Error;
-
-/// The result type of this library, [std::io::Result](https://doc.rust-lang.org/std/io/struct.Result.html)
-pub type Result<T> = std::io::Result<T>;
 
 /// A loaded library handle.
 ///
@@ -47,12 +43,13 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `LoadLibraryW(path)`
     /// | Unix      | `dlopen(path, ...)`
-    pub fn load(path: impl AsRef<Path> + Into<PathBuf>) -> core::result::Result<Self, LoadLibraryError> {
+    #[cfg(feature = "std")] // required for Path[Buf]
+    pub fn load(path: impl AsRef<std::path::Path> + Into<std::path::PathBuf>) -> core::result::Result<Self, LoadLibraryError> {
         let path = path.as_ref();
 
         #[cfg(windows)] return {
             use std::os::windows::ffi::OsStrExt;
-            let filename = path.as_os_str().encode_wide().chain([0].iter().copied()).collect::<Vec<u16>>();
+            let filename = path.as_os_str().encode_wide().chain([0].iter().copied()).collect::<alloc::vec::Vec<u16>>();
             match NonNull::new(unsafe { LoadLibraryW(filename.as_ptr()) }) {
                 Some(handle)    => Ok(Self(handle)),
                 None            => Err(LoadLibraryError { error: windows::Error::get_last(), path: path.into() }),
@@ -61,11 +58,11 @@ impl Library {
 
         #[cfg(unix)] return {
             use std::os::unix::ffi::OsStrExt;
-            let filename = path.as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<Vec<u8>>();
+            let filename = path.as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<alloc::vec::Vec<u8>>();
             let _ = unsafe { dlerror() }; // clear error code
             match NonNull::new(unsafe { dlopen(filename.as_ptr() as _, RTLD_LAZY) }) {
                 Some(handle)    => Ok(Self(handle)),
-                None            => Err(LoadLibraryError { dlerror: std::sync::Arc::from(unsafe { CStr::from_ptr(dlerror()) }.to_string_lossy()) }),
+                None            => Err(LoadLibraryError { dlerror: alloc::sync::Arc::from(unsafe { CStr::from_ptr(dlerror()) }.to_string_lossy()) }),
             }
         };
 
@@ -161,7 +158,7 @@ impl Library {
         if result == null_mut() {
             None
         } else {
-            Some(std::ptr::read(&result as *const *mut c_void as *const T))
+            Some(core::ptr::read(&result as *const *mut c_void as *const T))
         }
     }
 
@@ -214,7 +211,7 @@ impl Library {
             // SAFETY: ✔️
             //  * `T`   ✔️ is asserted to be the same size as `*mut c_void` via assert at start of function (can't enforce this at compile time)
             //  * `T`   ✔️ is assumed compatible with `*mut c_void` per the documented safety contract of this unsafe function
-            Some(std::mem::transmute_copy::<*mut c_void, T>(&func))
+            Some(core::mem::transmute_copy::<*mut c_void, T>(&func))
         }
     }
 
@@ -331,7 +328,10 @@ impl Library {
         }
         #[cfg(unix)] match dlclose(self.as_ptr()) {
             0 => Ok(()), // "The function dlclose() returns 0 on success, and nonzero on error." (https://linux.die.net/man/3/dlclose)
-            _ => Err(UnloadLibraryError { dlerror: std::sync::Arc::from(CStr::from_ptr(dlerror()).to_string_lossy()) }),
+            _ => {
+                #[cfg(    feature = "alloc" )] return Err(UnloadLibraryError { dlerror: alloc::sync::Arc::from(CStr::from_ptr(dlerror()).to_string_lossy()) });
+                #[cfg(not(feature = "alloc"))] return Err(UnloadLibraryError {});
+            },
         }
     }
 }

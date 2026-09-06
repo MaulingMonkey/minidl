@@ -16,4 +16,9 @@ include         = ["/**/*.rs", "/Cargo.toml", "/LICENSE-MIT", "/LICENSE-APACHE",
 rust-version    = "1.77" # https://doc.rust-lang.org/edition-guide/rust-2021/c-string-literals.html
 
 [badges]
-maintenance = { status = "experimental" }
+maintenance     = { status = "experimental" }
+
+[features]
+default         = ["std"]
+std             = ["alloc"]
+alloc           = []

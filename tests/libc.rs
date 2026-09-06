@@ -1,4 +1,5 @@
 #![cfg(unix)]
+#![cfg(feature = "std")] // XXX
 
 use minidl::*;
 use std::fmt::{self, Debug, Formatter};
