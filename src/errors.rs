@@ -73,8 +73,8 @@ impl Display for LoadLibraryError {
 /// -   [`Library::sym`]
 /// -   [`Library::sym_by_ordinal`]
 ///
-#[derive(Clone, Debug)] pub struct MissingSymbolError<'a> {
-    pub(crate) symbol: Symbol<'a>,
+#[derive(Clone, Debug)] pub struct MissingSymbolError<'symbol> {
+    pub(crate) symbol: Symbol<'symbol>,
 }
 
 impl Display for MissingSymbolError<'_> {
@@ -90,8 +90,8 @@ impl Display for MissingSymbolError<'_> {
     fn description(&self) -> &str { "symbol missing from library" }
 }
 
-#[cfg(feature = "std")] impl<'a> From<MissingSymbolError<'a>> for std::io::Error {
-    fn from(value: MissingSymbolError<'a>) -> Self {
+#[cfg(feature = "std")] impl<'symbol> From<MissingSymbolError<'symbol>> for std::io::Error {
+    fn from(value: MissingSymbolError<'symbol>) -> Self {
         std::io::Error::new(std::io::ErrorKind::InvalidInput, std::format!("{value}"))
     }
 }

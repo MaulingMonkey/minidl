@@ -131,7 +131,7 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
-    pub unsafe fn sym<'a, T>(&self, name: &'a CStr) -> core::result::Result<T, MissingSymbolError<'a>> {
+    pub unsafe fn sym<'symbol, T>(&self, name: &'symbol CStr) -> core::result::Result<T, MissingSymbolError<'symbol>> {
         self.sym_opt(name).ok_or_else(|| MissingSymbolError { symbol: Symbol::Name(name) })
     }
 
@@ -148,7 +148,7 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
-    pub unsafe fn sym_opt<'a, T>(&self, name: &CStr) -> Option<T> {
+    pub unsafe fn sym_opt<T>(&self, name: &CStr) -> Option<T> {
         assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
 
         #[cfg(windows)] let result = windows::get_proc_address::by_name(*self, name).ok()?.as_ptr();
@@ -328,7 +328,7 @@ impl Library {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Symbol<'a> {
-    Name(&'a CStr),
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Symbol<'symbol> {
+    Name(&'symbol CStr),
     Ordinal(u16), // windows only
 }
