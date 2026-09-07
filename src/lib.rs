@@ -6,7 +6,7 @@
 
 pub mod errors; #[doc(hidden)] pub use errors::*;
 #[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
-#[cfg(windows)] mod windows; #[cfg(windows)] use windows::*;
+#[cfg(windows)] pub mod windows; #[cfg(windows)] use windows::*;
 
 use core::ffi::{CStr, c_void};
 use core::mem::size_of;
@@ -50,10 +50,7 @@ impl Library {
         #[cfg(windows)] return {
             use std::os::windows::ffi::OsStrExt;
             let filename = path.as_os_str().encode_wide().chain([0].iter().copied()).collect::<alloc::vec::Vec<u16>>();
-            match NonNull::new(unsafe { LoadLibraryW(filename.as_ptr()) }) {
-                Some(handle)    => Ok(Self(handle)),
-                None            => Err(LoadLibraryError { error: windows::Error::get_last(), path: path.into() }),
-            }
+            windows::load_library_w(&filename).map_err(move |error| LoadLibraryError { error, path: path.into() })
         };
 
         #[cfg(unix)] return {
@@ -322,10 +319,7 @@ impl Library {
     /// | Windows   | `FreeLibrary(...)`
     /// | Unix      | `dlclose(...)`
     pub unsafe fn close_unsafe_unsound_possible_noop_do_not_use_in_production(self) -> core::result::Result<(), UnloadLibraryError> {
-        #[cfg(windows)] match FreeLibrary(self.as_ptr()) {
-            0 => Err(UnloadLibraryError { error: windows::Error::get_last() }),
-            _ => Ok(()), // "If the function succeeds, the return value is nonzero." (https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-freelibrary)
-        }
+        #[cfg(windows)] return windows::free_library(self).map_err(|error| UnloadLibraryError { error });
         #[cfg(unix)] match dlclose(self.as_ptr()) {
             0 => Ok(()), // "The function dlclose() returns 0 on success, and nonzero on error." (https://linux.die.net/man/3/dlclose)
             _ => {
@@ -340,3 +334,5 @@ impl Library {
     Name(&'a CStr),
     Ordinal(u16), // windows only
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] #[doc(hidden)] pub enum Never {}
