@@ -11,7 +11,7 @@ use core::fmt::{self, Debug, Display, Formatter};
 /// ## Returned by
 /// -   [`Library::load`]
 ///
-#[derive(Clone, Debug)] #[non_exhaustive] pub struct LoadLibraryError {
+#[derive(Debug)] #[non_exhaustive] pub struct LoadLibraryError {
     #[cfg(all(unix, feature = "alloc"   ))] pub(crate) dlerror: alloc::sync::Arc<str>,
     #[cfg(all(windows                   ))] pub(crate) error:   windows::Error,
     #[cfg(all(windows, feature = "std"  ))] pub(crate) path:    std::path::PathBuf,
@@ -73,7 +73,7 @@ impl Display for LoadLibraryError {
 /// -   [`Library::sym`]
 /// -   [`Library::sym_by_ordinal`]
 ///
-#[derive(Clone, Debug)] pub struct MissingSymbolError<'symbol> {
+#[derive(Debug)] pub struct MissingSymbolError<'symbol> {
     pub(crate) symbol: Symbol<'symbol>,
 }
 
@@ -104,7 +104,7 @@ impl Display for MissingSymbolError<'_> {
 /// ## Returned by
 /// -   [`Library::close_unsafe_unsound_possible_noop_do_not_use_in_production`]
 ///
-#[derive(Clone, Debug)] #[non_exhaustive] pub struct UnloadLibraryError {
+#[derive(Debug)] #[non_exhaustive] pub struct UnloadLibraryError {
     #[cfg(all(unix, feature = "alloc"   ))] pub(crate) dlerror: alloc::sync::Arc<str>,
     #[cfg(all(windows                   ))] pub(crate) error: windows::Error,
 }
