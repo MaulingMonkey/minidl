@@ -6,7 +6,7 @@
     "options": { "cwd": "${workspaceFolder}", "env": { "RUST_BACKTRACE": "1" } },
     "tasks": [
         { "group": { "kind": "build", "isDefault": true }, "label": "scripts\\test", "command": "scripts\\test" },
-        { "label": "help", "command": "cargo +stable doc --open" },
+        { "label": "help", "command": "scripts\\doc --open" },
 
         // minidl
         {

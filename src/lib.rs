@@ -1,5 +1,6 @@
 #![doc = include_str!("../Readme.md")]
 #![no_std]
+#![deny(non_snake_case, unreachable_patterns)] // catch typoed match ... { ERROR_... => ... }
 
 #[cfg(feature = "alloc")]   extern crate alloc;
 #[cfg(feature = "std")]     extern crate std;
