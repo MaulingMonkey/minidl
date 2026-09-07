@@ -1,10 +1,12 @@
-use core::ffi::{c_void, c_char};
+use crate::Library;
+
+use core::ffi::{CStr, c_void, c_char};
 use core::fmt::{self, Debug, Formatter};
+use core::ptr::NonNull;
 
 pub(crate) const ERROR_BAD_EXE_FORMAT : Error = Error::from_u32(0x00C1);
 pub(crate) const ERROR_MOD_NOT_FOUND  : Error = Error::from_u32(0x007E);
 extern "system" {
-    pub(crate) fn GetProcAddress(hModule: *mut c_void, lpProcName: *const c_char) -> *mut c_void;
     pub(crate) fn LoadLibraryW(lpFileName: *const u16) -> *mut c_void;
     pub(crate) fn FreeLibrary(hModule: *mut c_void) -> u32;
 }
@@ -64,4 +66,36 @@ impl Debug for Error {
     use winresult::ERROR;
     assert_eq!(ERROR_BAD_EXE_FORMAT     .to_u32(), ERROR::BAD_EXE_FORMAT    .to_u32());
     assert_eq!(ERROR_MOD_NOT_FOUND      .to_u32(), ERROR::MOD_NOT_FOUND     .to_u32());
+}
+
+
+
+/// \[[microsoft.com](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress)\]
+/// GetProcAddress
+///
+pub(crate) mod get_proc_address {
+    use super::*;
+
+    extern "system" { fn GetProcAddress(hModule: Library, lpProcName: *const c_char) -> Option<NonNull<c_void>>; }
+
+    /// \[[microsoft.com](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress)\]
+    /// GetProcAddress
+    ///
+    pub(crate) fn by_name(module: Library, proc_name: &CStr) -> Result<NonNull<c_void>, Error> {
+        // SAFETY: ✔️
+        //  - `hModule`     ✔️ is a valid, non-dangling, loaded hmodule, as implied by `Library`'s existence.
+        //  - `lpProcName`  ✔️ is a valid, non-dangling, `\0`-terminated string containing no interior `\0`s, as implied by `CStr`'s existence.
+        unsafe { GetProcAddress(module, proc_name.as_ptr()) }.ok_or_else(Error::get_last)
+    }
+
+    /// \[[microsoft.com](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress)\]
+    /// GetProcAddress
+    ///
+    pub(crate) fn by_ordinal(module: Library, ordinal: u16) -> Result<NonNull<c_void>, Error> {
+        // SAFETY: ✔️
+        //  - `hModule`     ✔️ is a valid, non-dangling, loaded hmodule, as implied by `Library`'s existence.
+        //  - `lpProcName`  ✔️ is a WORD/u16, meeting GetProcAddress's documented requirement:
+        //                  "If this parameter is an ordinal value, it must be in the low-order word; the high-order word must be zero."
+        unsafe { GetProcAddress(module, ordinal as usize as *mut _) }.ok_or_else(Error::get_last)
+    }
 }

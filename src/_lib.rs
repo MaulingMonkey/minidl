@@ -149,12 +149,10 @@ impl Library {
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
     pub unsafe fn sym_opt<'a, T>(&self, name: &CStr) -> Option<T> {
-        let module = self.as_ptr();
         assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
 
-        let cname = name.as_ptr() as _;
-        #[cfg(windows)] let result = GetProcAddress(module, cname);
-        #[cfg(unix)] let result = dlsym(module, cname);
+        #[cfg(windows)] let result = windows::get_proc_address::by_name(*self, name).ok()?.as_ptr();
+        #[cfg(unix)] let result = dlsym(self.as_ptr(), name.as_ptr());
 
         if result == null_mut() {
             None
@@ -198,11 +196,7 @@ impl Library {
     pub unsafe fn sym_opt_by_ordinal<T>(self, ordinal: u16) -> Option<T> {
         assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
 
-        // SAFETY: ✔️
-        //  * `hModule`     ✔️ is a valid, non-dangling, loaded hmodule
-        //  * `lpProcName`  ✔️ is a WORD/u16, meeting GetProcAddress's documented requirement:
-        //                  "If this parameter is an ordinal value, it must be in the low-order word; the high-order word must be zero."
-        #[cfg(windows)] let func = GetProcAddress(self.as_ptr(), ordinal as usize as *const _);
+        #[cfg(windows)] let func = windows::get_proc_address::by_ordinal(self, ordinal).ok()?.as_ptr();
         #[cfg(unix)] let func = null_mut::<c_void>();
         #[cfg(unix)] let _ = ordinal;
 
