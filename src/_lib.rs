@@ -317,10 +317,7 @@ impl Library {
     /// | Windows   | `FreeLibrary(...)`
     /// | Unix      | `dlclose(...)`
     pub unsafe fn close_unsafe_unsound_possible_noop_do_not_use_in_production(self) -> core::result::Result<(), UnloadLibraryError> {
-        #[cfg(windows)] match FreeLibrary(self.as_ptr()) {
-            0 => Err(UnloadLibraryError { error: windows::Error::get_last() }),
-            _ => Ok(()), // "If the function succeeds, the return value is nonzero." (https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-freelibrary)
-        }
+        #[cfg(windows)] return windows::free_library(self).map_err(|error| UnloadLibraryError { error });
         #[cfg(unix)] match dlclose(self.as_ptr()) {
             0 => Ok(()), // "The function dlclose() returns 0 on success, and nonzero on error." (https://linux.die.net/man/3/dlclose)
             _ => {

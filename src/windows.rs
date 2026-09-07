@@ -8,7 +8,6 @@ pub(crate) const ERROR_BAD_EXE_FORMAT : Error = Error::from_u32(0x00C1);
 pub(crate) const ERROR_MOD_NOT_FOUND  : Error = Error::from_u32(0x007E);
 extern "system" {
     pub(crate) fn LoadLibraryW(lpFileName: *const u16) -> *mut c_void;
-    pub(crate) fn FreeLibrary(hModule: *mut c_void) -> u32;
 }
 
 
@@ -97,5 +96,25 @@ pub(crate) mod get_proc_address {
         //  - `lpProcName`  ✔️ is a WORD/u16, meeting GetProcAddress's documented requirement:
         //                  "If this parameter is an ordinal value, it must be in the low-order word; the high-order word must be zero."
         unsafe { GetProcAddress(module, ordinal as usize as *mut _) }.ok_or_else(Error::get_last)
+    }
+}
+
+
+
+/// \[[microsoft.com](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-freelibrary)\]
+/// FreeLibrary
+///
+/// Attempt to unload the library.
+///
+/// # Safety
+/// ❌ This is a **fundamentally unsound** operation that **may do nothing** and **invalidates everything** ❌
+///
+/// See [`Library::close_unsafe_unsound_possible_noop_do_not_use_in_production`] for the full rant.
+///
+pub(crate) unsafe fn free_library(module: Library) -> Result<(), Error> {
+    extern "system" { fn FreeLibrary(hModule: Library) -> u32; }
+    match unsafe { FreeLibrary(module) } {
+        0   => Err(Error::get_last()),
+        1.. => Ok(()),
     }
 }
