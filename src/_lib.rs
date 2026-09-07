@@ -51,10 +51,7 @@ impl Library {
         #[cfg(windows)] return {
             use std::os::windows::ffi::OsStrExt;
             let filename = path.as_os_str().encode_wide().chain([0].iter().copied()).collect::<alloc::vec::Vec<u16>>();
-            match NonNull::new(unsafe { LoadLibraryW(filename.as_ptr()) }) {
-                Some(handle)    => Ok(Self(handle)),
-                None            => Err(LoadLibraryError { error: windows::Error::get_last(), path: path.into() }),
-            }
+            windows::load_library_w(&filename).map_err(|error| LoadLibraryError { error, path: path.into() })
         };
 
         #[cfg(unix)] return {

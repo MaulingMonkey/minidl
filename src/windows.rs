@@ -4,11 +4,9 @@ use core::ffi::{CStr, c_void, c_char};
 use core::fmt::{self, Debug, Formatter};
 use core::ptr::NonNull;
 
-pub(crate) const ERROR_BAD_EXE_FORMAT : Error = Error::from_u32(0x00C1);
-pub(crate) const ERROR_MOD_NOT_FOUND  : Error = Error::from_u32(0x007E);
-extern "system" {
-    pub(crate) fn LoadLibraryW(lpFileName: *const u16) -> *mut c_void;
-}
+pub(crate) const ERROR_BAD_EXE_FORMAT       : Error = Error::from_u32(0x00C1);
+pub(crate) const ERROR_INVALID_PARAMETER    : Error = Error::from_u32(87);
+pub(crate) const ERROR_MOD_NOT_FOUND        : Error = Error::from_u32(0x007E);
 
 
 
@@ -37,6 +35,7 @@ impl Error {
     const fn as_str(self) -> Option<&'static str> {
         Some(match self {
             ERROR_BAD_EXE_FORMAT    => "ERROR_BAD_EXE_FORMAT",
+            ERROR_INVALID_PARAMETER => "ERROR_INVALID_PARAMETER",
             ERROR_MOD_NOT_FOUND     => "ERROR_MOD_NOT_FOUND",
             _other                  => return None,
         })
@@ -64,6 +63,7 @@ impl Debug for Error {
 #[cfg(feature = "winresult")] #[test] fn test_error_codes() {
     use winresult::ERROR;
     assert_eq!(ERROR_BAD_EXE_FORMAT     .to_u32(), ERROR::BAD_EXE_FORMAT    .to_u32());
+    assert_eq!(ERROR_INVALID_PARAMETER  .to_u32(), ERROR::INVALID_PARAMETER .to_u32());
     assert_eq!(ERROR_MOD_NOT_FOUND      .to_u32(), ERROR::MOD_NOT_FOUND     .to_u32());
 }
 
@@ -116,5 +116,25 @@ pub(crate) unsafe fn free_library(module: Library) -> Result<(), Error> {
     match unsafe { FreeLibrary(module) } {
         0   => Err(Error::get_last()),
         1.. => Ok(()),
+    }
+}
+
+
+
+/// \[[microsoft.com](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-loadlibraryw)\]
+/// LoadLibraryW
+pub(crate) fn load_library_w(file_name: &[u16]) -> Result<Library, Error> {
+    extern "system" { fn LoadLibraryW(lpFileName: *const u16) -> Option<Library>; }
+    unsafe { LoadLibraryW(wcstr0(file_name)?) }.ok_or_else(Error::get_last)
+}
+
+
+
+/// Validate a slice can be treated as a wide equivalent of [`CStr`] (no interior `\0`s, terminal `\0`.)
+/// Returns [Err]\([ERROR_INVALID_PARAMETER]\) if it can't.
+fn wcstr0(s0: &[u16]) -> Result<*const u16, Error> {
+    match s0 {
+        [ s @ .., 0 ] if !s.contains(&0)    => Ok(s0.as_ptr()),
+        _                                 => Err(ERROR_INVALID_PARAMETER),
     }
 }
