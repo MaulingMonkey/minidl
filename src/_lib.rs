@@ -46,17 +46,15 @@ impl Library {
     /// | Unix      | `dlopen(path, ...)`
     #[cfg(feature = "std")] // required for Path[Buf]
     pub fn load(path: impl AsRef<std::path::Path> + Into<std::path::PathBuf>) -> core::result::Result<Self, LoadLibraryError> {
-        let path = path.as_ref();
-
         #[cfg(windows)] return {
             use std::os::windows::ffi::OsStrExt;
-            let filename = path.as_os_str().encode_wide().chain([0].iter().copied()).collect::<alloc::vec::Vec<u16>>();
-            windows::load_library_w(&filename).map_err(|error| LoadLibraryError { error, path: path.into() })
+            let filename = path.as_ref().as_os_str().encode_wide().chain([0].iter().copied()).collect::<alloc::vec::Vec<u16>>();
+            windows::load_library_w(&filename).map_err(|error| LoadLibraryError { error, path: path.into().into() })
         };
 
         #[cfg(unix)] return {
             use std::os::unix::ffi::OsStrExt;
-            let filename = path.as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<alloc::vec::Vec<u8>>();
+            let filename = path.as_ref().as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<alloc::vec::Vec<u8>>();
             let _ = unsafe { dlerror() }; // clear error code
             match NonNull::new(unsafe { dlopen(filename.as_ptr() as _, RTLD_LAZY) }) {
                 Some(handle)    => Ok(Self(handle)),
