@@ -315,8 +315,3 @@ impl Library {
         #[cfg(unix)] return unix::dlclose(self).map_err(|ret| UnloadLibraryError { dlerror: unix::dlerror::to_cstring(), ret });
     }
 }
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Symbol<'symbol> {
-    Name(&'symbol CStr),
-    Ordinal(u16), // windows only
-}
