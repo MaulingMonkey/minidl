@@ -10,6 +10,7 @@ pub mod errors; #[doc(hidden)] pub use errors::*;
 #[cfg(windows)] mod windows; #[cfg(windows)] use windows::*;
 
 use core::ffi::{CStr, c_void};
+use core::fmt::{self, Display, Formatter};
 use core::mem::size_of;
 use core::ptr::{NonNull, null_mut};
 
@@ -55,10 +56,10 @@ impl Library {
         #[cfg(unix)] return {
             use std::os::unix::ffi::OsStrExt;
             let filename = path.as_ref().as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<alloc::vec::Vec<u8>>();
-            let _ = unsafe { dlerror() }; // clear error code
+            unix::dlerror::clear();
             match NonNull::new(unsafe { dlopen(filename.as_ptr() as _, RTLD_LAZY) }) {
                 Some(handle)    => Ok(Self(handle)),
-                None            => Err(LoadLibraryError { dlerror: alloc::sync::Arc::from(unsafe { CStr::from_ptr(dlerror()) }.to_string_lossy()) }),
+                None            => Err(LoadLibraryError { dlerror: unix::dlerror::to_cstring() }),
             }
         };
 
@@ -315,10 +316,7 @@ impl Library {
         #[cfg(windows)] return windows::free_library(self).map_err(|error| UnloadLibraryError { error });
         #[cfg(unix)] match dlclose(self.as_ptr()) {
             0 => Ok(()), // "The function dlclose() returns 0 on success, and nonzero on error." (https://linux.die.net/man/3/dlclose)
-            _ => {
-                #[cfg(    feature = "alloc" )] return Err(UnloadLibraryError { dlerror: alloc::sync::Arc::from(CStr::from_ptr(dlerror()).to_string_lossy()) });
-                #[cfg(not(feature = "alloc"))] return Err(UnloadLibraryError {});
-            },
+            _ => Err(UnloadLibraryError { dlerror: unix::dlerror::to_cstring() }),
         }
     }
 }
@@ -326,4 +324,25 @@ impl Library {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Symbol<'symbol> {
     Name(&'symbol CStr),
     Ordinal(u16), // windows only
+}
+
+#[allow(dead_code)]
+struct CStrDisplay<'s>(&'s CStr); // TODO: replace with CStr::display once stabilized
+
+impl Display for CStrDisplay<'_> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        match self.0.to_str() {
+            Ok(str) => fmt.write_str(str),
+            Err(_) => {
+                use core::fmt::Write;
+                for b in self.0.to_bytes().iter().copied() {
+                    fmt.write_char(match b {
+                        0 ..= 0x7F  => char::from(b),
+                        0x80 ..     => '?',
+                    })?;
+                }
+                Ok(())
+            },
+        }
+    }
 }

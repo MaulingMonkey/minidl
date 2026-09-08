@@ -12,17 +12,18 @@ use core::fmt::{self, Debug, Display, Formatter};
 /// -   [`Library::load`]
 ///
 #[derive(Debug)] #[non_exhaustive] pub struct LoadLibraryError {
-    #[cfg(all(unix, feature = "alloc"   ))] pub(crate) dlerror: alloc::sync::Arc<str>,
-    #[cfg(all(windows                   ))] pub(crate) error:   windows::Error,
-    #[cfg(windows)] #[allow(dead_code)]     pub(crate) path:    ErrorPath,
+    #[cfg(all(unix,     feature = "alloc"   ))] pub(crate) dlerror: Option<alloc::ffi::CString>,
+    #[cfg(all(unix, not(feature = "alloc")  ))] pub(crate) dlerror: Option<&'static core::ffi::CStr>,
+    #[cfg(all(windows                       ))] pub(crate) error:   windows::Error,
+    #[cfg(windows)] #[allow(dead_code)]         pub(crate) path:    ErrorPath,
 }
 
 impl Display for LoadLibraryError {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        #[cfg(unix)] {
-            #[cfg(    feature = "alloc" )] return write!(fmt, "could not load library: {}", self.dlerror);
-            #[cfg(not(feature = "alloc"))] return write!(fmt, "could not load library");
-        }
+        #[cfg(unix)] return match self.dlerror.as_ref() {
+            Some(err)   => write!(fmt, "could not load library: {}", CStrDisplay(err)),
+            None        => write!(fmt, "could not load library"),
+        };
 
         #[cfg(windows)] {
             #[cfg(feature = "alloc")] let path = &self.path;
@@ -42,7 +43,11 @@ impl Display for LoadLibraryError {
 
 #[cfg(feature = "std")] impl std::error::Error for LoadLibraryError {
     fn description(&self) -> &str {
-        #[cfg(unix)] return &*self.dlerror;
+        #[cfg(unix)] return match self.dlerror.as_ref().map(|cs| cs.to_str()) {
+            Some(Ok(utf8))  => utf8,
+            Some(Err(_))    => "could not load library (and dlerror() returned non-utf8 error message)",
+            None            => "could not load library (unknown error)",
+        };
         #[cfg(windows)] return match self.error {
             ERROR_BAD_EXE_FORMAT    => "could not load library: ERROR_BAD_EXE_FORMAT (typically the DLL architecture doesn't match the process architecture)",
             ERROR_MOD_NOT_FOUND     => "could not load library: ERROR_MOD_NOT_FOUND (wrong path or no such library)",
@@ -105,16 +110,17 @@ impl Display for MissingSymbolError<'_> {
 /// -   [`Library::close_unsafe_unsound_possible_noop_do_not_use_in_production`]
 ///
 #[derive(Debug)] #[non_exhaustive] pub struct UnloadLibraryError {
-    #[cfg(all(unix, feature = "alloc"   ))] pub(crate) dlerror: alloc::sync::Arc<str>,
-    #[cfg(all(windows                   ))] pub(crate) error: windows::Error,
+    #[cfg(all(unix,     feature = "alloc"   ))] pub(crate) dlerror: Option<alloc::ffi::CString>,
+    #[cfg(all(unix, not(feature = "alloc")  ))] pub(crate) dlerror: Option<&'static core::ffi::CStr>,
+    #[cfg(all(windows                       ))] pub(crate) error: windows::Error,
 }
 
 impl Display for UnloadLibraryError {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        #[cfg(unix)] {
-            #[cfg(    feature = "alloc" )] return write!(fmt, "could not unload library: {}", self.dlerror);
-            #[cfg(not(feature = "alloc"))] return write!(fmt, "could not unload library");
-        }
+        #[cfg(unix)] return match self.dlerror.as_ref() {
+            Some(err)   => write!(fmt, "could not unload library: {}", CStrDisplay(err)),
+            None        => write!(fmt, "could not unload library"),
+        };
         #[cfg(windows)] return write!(fmt, "could not unload library (error code: {:?})", self.error);
         // other platforms: NYI
     }
