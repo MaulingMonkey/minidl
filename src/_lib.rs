@@ -7,7 +7,7 @@
 
 #[path = "errors/_errors.rs"] pub mod errors; #[doc(hidden)] pub use errors::*;
 #[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
-#[cfg(windows)] mod windows; #[cfg(windows)] use windows::*;
+#[cfg(windows)] #[path = "windows/_windows.rs"] mod windows; #[cfg(windows)] use windows::*;
 
 use core::ffi::{CStr, c_void};
 use core::fmt::{self, Display, Formatter};
