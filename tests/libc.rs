@@ -1,10 +1,12 @@
 #![cfg(unix)]
-#![cfg(feature = "std")] // XXX
 
 use minidl::*;
-use std::fmt::{self, Debug, Formatter};
-use std::io::Result;
-use std::os::raw::*;
+
+use core::ffi::{c_char, c_int};
+use core::fmt::{self, Debug, Formatter};
+
+#[cfg(    feature = "std" )] use std::io::Result;
+#[cfg(not(feature = "std"))] type Result<T> = core::result::Result<T, IgnoreError>;
 
 #[allow(dead_code)]
 struct Example {
@@ -36,7 +38,7 @@ impl Example {
 #[test] fn bad_load() {
     let e = Library::load("libdoes_not_exist_invalid.so").expect_err("Invalid SO should've failed to load");
     let e = format!("{}", e);
-    assert!(e.contains("does_not_exist_invalid"), "{}", e);
+    assert!(!cfg!(feature = "alloc") || e.contains("does_not_exist_invalid"), "error does not contain library name: {e}");
 }
 
 #[test] fn load_unload() {
@@ -47,10 +49,12 @@ impl Example {
 }
 
 #[test] fn bad_sym() {
-    let e = Example::new().expect_err("Example should've failed to load invalid_required");
-    let e = format!("{}", e);
-    assert!(!e.contains("invalid_optional"), "{}", e);
-    assert!( e.contains("invalid_required"), "{}", e);
+    let _e = Example::new().expect_err("Example should've failed to load invalid_required");
+    #[cfg(feature = "std")] {
+        let e = format!("{_e}");
+        assert!(!e.contains("invalid_optional"), "{e}");
+        assert!( e.contains("invalid_required"), "{e}");
+    }
 }
 
 #[test] fn ok_sym() {
@@ -62,3 +66,8 @@ impl Example {
         puts(b"Hello, world!\0".as_ptr() as _);
     }
 }
+
+#[allow(dead_code)] #[derive(Debug)] struct IgnoreError(());
+impl From<minidl::LoadLibraryError      > for IgnoreError { fn from(_: minidl::LoadLibraryError     ) -> Self { Self(()) } }
+impl From<minidl::UnloadLibraryError    > for IgnoreError { fn from(_: minidl::UnloadLibraryError   ) -> Self { Self(()) } }
+impl From<minidl::MissingSymbolError<'_>> for IgnoreError { fn from(_: minidl::MissingSymbolError   ) -> Self { Self(()) } }

@@ -35,12 +35,11 @@ const _ : () = {
         /// | --------- | -------- |
         /// | Windows   | `LoadLibraryW(path)`
         /// | Unix      | `dlopen(path, ...)`
-        #[cfg(feature = "std")] // required for Path[Buf]
-        pub fn load(path: impl AsRef<std::path::Path> + Into<std::path::PathBuf>) -> core::result::Result<Self, LoadLibraryError> {
+        pub fn load(path: impl NameOrPath) -> core::result::Result<Self, LoadLibraryError> {
             #[cfg(windows)] return {
                 use windows::*;
                 with_ncstr0(
-                    path.as_ref().as_os_str(),
+                    path.as_ref(),
                     load_library_w,
                     || Err(ERROR_INVALID_PARAMETER),
                     || Err(ERROR_BUFFER_OVERFLOW)
@@ -51,7 +50,7 @@ const _ : () = {
                 use unix::*;
                 dlerror::clear();
                 with_ncstr0(
-                    path.as_ref().as_os_str(),
+                    path.as_ref(),
                     |path0| unsafe { dlopen(path0, RTLD_LAZY) }.map_err(|dlerror| LoadLibraryError { dlerror }),
                     || Err(LoadLibraryError { dlerror: Some(c"unable to load library: filename contains interior NULs".into()) }),
                     || Err(LoadLibraryError { dlerror: Some(c"unable to load library: filename too long for stack buffer, minidl built without feature = \"alloc\"".into()) }),

@@ -29,7 +29,7 @@ struct Example {
 }
 
 impl Example {
-    #[cfg(feature = "std")] // XXX: currently required for Library::load
+    #[cfg(feature = "std")] // std::io::Result
     pub fn new() -> std::io::Result<Self> {
         let lib = Library::load("kernel32.dll")?;
         unsafe{Ok(Self{

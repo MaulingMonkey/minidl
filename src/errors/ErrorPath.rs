@@ -5,10 +5,10 @@ pub(crate) enum ErrorPath {
     #[cfg(feature = "std"   )] OS(std::path::PathBuf), // MSRV doesn't implement OsStr::display, only Path::display, so we choose the later
 }
 
-impl From<& str> for ErrorPath { fn from(_path: & str) -> Self { #[cfg(feature = "alloc")] return ErrorPath::Utf8(_path.into()); #[allow(unreachable_code)] ErrorPath::Unknown } }
-impl From<&CStr> for ErrorPath { fn from(_path: &CStr) -> Self { #[cfg(feature = "alloc")] return ErrorPath::C(   _path.into()); #[allow(unreachable_code)] ErrorPath::Unknown } }
+#[cfg(all()             )] impl From<& str                  > for ErrorPath { fn from(_path:&               str     ) -> Self { #[cfg(feature = "alloc")] return ErrorPath::Utf8(_path.into()); #[allow(unreachable_code)] ErrorPath::Unknown } }
 #[cfg(feature = "alloc" )] impl From<&alloc::string::String > for ErrorPath { fn from(path: &alloc::string::String  ) -> Self { Self::Utf8(path.into()) } }
 #[cfg(feature = "alloc" )] impl From< alloc::string::String > for ErrorPath { fn from(path:  alloc::string::String  ) -> Self { Self::Utf8(path.into()) } }
+#[cfg(all()             )] impl From<&            CStr      > for ErrorPath { fn from(_path:&            CStr       ) -> Self { #[cfg(feature = "alloc")] return ErrorPath::C(   _path.into()); #[allow(unreachable_code)] ErrorPath::Unknown } }
 #[cfg(feature = "alloc" )] impl From<&alloc::ffi::CString   > for ErrorPath { fn from(path: &alloc::ffi::CString    ) -> Self { Self::C(path.clone()) } }
 #[cfg(feature = "alloc" )] impl From< alloc::ffi::CString   > for ErrorPath { fn from(path:  alloc::ffi::CString    ) -> Self { Self::C(path.into()) } }
 #[cfg(feature = "std"   )] impl From<&std::path::Path       > for ErrorPath { fn from(path: &std::path::Path        ) -> Self { Self::OS(path.into()) } }
