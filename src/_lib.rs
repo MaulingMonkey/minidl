@@ -9,7 +9,7 @@
 #[path = "errors/_errors.rs"] pub mod errors; #[doc(hidden)] pub use errors::*;
 #[path = "util/_util.rs"] mod util; pub(crate) use util::*;
 
-#[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
+#[cfg(unix   )] mod unix;
 #[cfg(windows)] #[path = "windows/_windows.rs"] mod windows; #[cfg(windows)] use windows::*;
 
 use core::ffi::{CStr, c_void};
@@ -57,9 +57,11 @@ impl Library {
 
         #[cfg(unix)] return {
             use std::os::unix::ffi::OsStrExt;
+            use unix::*;
+
             let filename = path.as_ref().as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<alloc::vec::Vec<u8>>();
-            unix::dlerror::clear();
-            unsafe { unix::dlopen(CStr::from_bytes_with_nul(&filename).map_err(|_| LoadLibraryError { dlerror: unix::dlerror::to_cstring() })?, RTLD_LAZY) }
+            dlerror::clear();
+            unsafe { dlopen(CStr::from_bytes_with_nul(&filename).map_err(|_| LoadLibraryError { dlerror: dlerror::to_cstring() })?, RTLD_LAZY) }
                 .map_err(|dlerror| LoadLibraryError { dlerror })
         };
 
