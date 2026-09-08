@@ -50,19 +50,25 @@ impl Library {
     #[cfg(feature = "std")] // required for Path[Buf]
     pub fn load(path: impl AsRef<std::path::Path> + Into<std::path::PathBuf>) -> core::result::Result<Self, LoadLibraryError> {
         #[cfg(windows)] return {
-            use std::os::windows::ffi::OsStrExt;
-            let filename = path.as_ref().as_os_str().encode_wide().chain([0].iter().copied()).collect::<alloc::vec::Vec<u16>>();
-            windows::load_library_w(&filename).map_err(|error| LoadLibraryError { error, path: path.into().into() })
+            use windows::*;
+            with_ncstr0(
+                path.as_ref().as_os_str(),
+                load_library_w,
+                || Err(ERROR_INVALID_PARAMETER),
+                || Err(ERROR_BUFFER_OVERFLOW)
+            ).map_err(|error| LoadLibraryError { error, path: path.into().into() })
         };
 
         #[cfg(unix)] return {
-            use std::os::unix::ffi::OsStrExt;
             use unix::*;
-
-            let filename = path.as_ref().as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<alloc::vec::Vec<u8>>();
             dlerror::clear();
-            unsafe { dlopen(CStr::from_bytes_with_nul(&filename).map_err(|_| LoadLibraryError { dlerror: dlerror::to_cstring() })?, RTLD_LAZY) }
-                .map_err(|dlerror| LoadLibraryError { dlerror })
+            with_ncstr0(
+                path.as_ref().as_os_str(),
+                |path0| unsafe { dlopen(path0, RTLD_LAZY) }.map_err(|dlerror| LoadLibraryError { dlerror }),
+                || Err(LoadLibraryError { dlerror: Some(c"unable to load library: filename contains interior NULs".into()) }),
+                || Err(LoadLibraryError { dlerror: Some(c"unable to load library: filename too long for stack buffer, minidl built without feature = \"alloc\"".into()) }),
+            )
+
         };
 
         #[cfg(not(any(unix, windows)))] LoadLibraryError { _not_supported: () }

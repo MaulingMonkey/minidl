@@ -25,6 +25,7 @@ impl Error {
     const fn as_str(self) -> Option<&'static str> {
         Some(match self {
             ERROR_BAD_EXE_FORMAT    => "ERROR_BAD_EXE_FORMAT",
+            ERROR_BUFFER_OVERFLOW   => "ERROR_BUFFER_OVERFLOW",
             ERROR_INVALID_PARAMETER => "ERROR_INVALID_PARAMETER",
             ERROR_MOD_NOT_FOUND     => "ERROR_MOD_NOT_FOUND",
             _other                  => return None,
@@ -33,12 +34,14 @@ impl Error {
 }
 
 pub(crate) const ERROR_BAD_EXE_FORMAT       : Error = Error::from_u32(0x00C1);
+pub(crate) const ERROR_BUFFER_OVERFLOW      : Error = Error::from_u32(111);
 pub(crate) const ERROR_INVALID_PARAMETER    : Error = Error::from_u32(87);
 pub(crate) const ERROR_MOD_NOT_FOUND        : Error = Error::from_u32(0x007E);
 
 #[cfg(feature = "winresult")] #[test] fn test_error_codes() {
     use winresult::ERROR;
     assert_eq!(ERROR_BAD_EXE_FORMAT     .to_u32(), ERROR::BAD_EXE_FORMAT    .to_u32());
+    assert_eq!(ERROR_BUFFER_OVERFLOW    .to_u32(), ERROR::BUFFER_OVERFLOW   .to_u32());
     assert_eq!(ERROR_INVALID_PARAMETER  .to_u32(), ERROR::INVALID_PARAMETER .to_u32());
     assert_eq!(ERROR_MOD_NOT_FOUND      .to_u32(), ERROR::MOD_NOT_FOUND     .to_u32());
 }
