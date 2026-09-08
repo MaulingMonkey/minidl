@@ -13,7 +13,7 @@ categories      = ["external-ffi-bindings"]
 license         = "MIT OR Apache-2.0"
 readme          = "Readme.md"
 include         = ["/**/*.rs", "/Cargo.toml", "/LICENSE-MIT", "/LICENSE-APACHE", "Readme.md"]
-rust-version    = "1.77" # https://doc.rust-lang.org/edition-guide/rust-2021/c-string-literals.html
+rust-version    = "1.79" # https://doc.rust-lang.org/std/num/struct.NonZero.html
 
 [badges]
 maintenance     = { status = "experimental" }

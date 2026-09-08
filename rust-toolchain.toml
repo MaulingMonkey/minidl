@@ -1,6 +1,6 @@
 # https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file
 
 [toolchain]
-channel = "1.77" # https://doc.rust-lang.org/edition-guide/rust-2021/c-string-literals.html
+channel = "1.79" # https://doc.rust-lang.org/std/num/struct.NonZero.html
 profile = "minimal"
 components = ["rust-analyzer"]
