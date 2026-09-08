@@ -7,11 +7,15 @@ pub(crate) enum ErrorPath {
 
 impl From<& str> for ErrorPath { fn from(_path: & str) -> Self { #[cfg(feature = "alloc")] return ErrorPath::Utf8(_path.into()); #[allow(unreachable_code)] ErrorPath::Unknown } }
 impl From<&CStr> for ErrorPath { fn from(_path: &CStr) -> Self { #[cfg(feature = "alloc")] return ErrorPath::C(   _path.into()); #[allow(unreachable_code)] ErrorPath::Unknown } }
-#[cfg(feature = "alloc" )] impl From<alloc::string::String  > for ErrorPath { fn from(path: alloc::string::String   ) -> Self { Self::Utf8(path.into()) } }
-#[cfg(feature = "alloc" )] impl From<alloc::ffi::CString    > for ErrorPath { fn from(path: alloc::ffi::CString     ) -> Self { Self::C(path.into()) } }
+#[cfg(feature = "alloc" )] impl From<&alloc::string::String > for ErrorPath { fn from(path: &alloc::string::String  ) -> Self { Self::Utf8(path.into()) } }
+#[cfg(feature = "alloc" )] impl From< alloc::string::String > for ErrorPath { fn from(path:  alloc::string::String  ) -> Self { Self::Utf8(path.into()) } }
+#[cfg(feature = "alloc" )] impl From<&alloc::ffi::CString   > for ErrorPath { fn from(path: &alloc::ffi::CString    ) -> Self { Self::C(path.clone()) } }
+#[cfg(feature = "alloc" )] impl From< alloc::ffi::CString   > for ErrorPath { fn from(path:  alloc::ffi::CString    ) -> Self { Self::C(path.into()) } }
 #[cfg(feature = "std"   )] impl From<&std::path::Path       > for ErrorPath { fn from(path: &std::path::Path        ) -> Self { Self::OS(path.into()) } }
+#[cfg(feature = "std"   )] impl From<&std::path::PathBuf    > for ErrorPath { fn from(path: &std::path::PathBuf     ) -> Self { Self::OS(path.into()) } }
 #[cfg(feature = "std"   )] impl From< std::path::PathBuf    > for ErrorPath { fn from(path:  std::path::PathBuf     ) -> Self { Self::OS(path.into()) } }
 #[cfg(feature = "std"   )] impl From<&std::ffi::OsStr       > for ErrorPath { fn from(path: &std::ffi::OsStr        ) -> Self { Self::OS(std::path::Path::new(path).into()) } }
+#[cfg(feature = "std"   )] impl From<&std::ffi::OsString    > for ErrorPath { fn from(path: &std::ffi::OsString     ) -> Self { Self::OS(std::path::Path::new(path).into()) } }
 #[cfg(feature = "std"   )] impl From< std::ffi::OsString    > for ErrorPath { fn from(path:  std::ffi::OsString     ) -> Self { Self::OS(std::path::PathBuf::from(path).into()) } }
 
 impl Debug for ErrorPath {
