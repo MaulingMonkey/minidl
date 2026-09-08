@@ -6,11 +6,12 @@
 #[cfg(feature = "std")]     extern crate std;
 
 #[path = "errors/_errors.rs"] pub mod errors; #[doc(hidden)] pub use errors::*;
+#[path = "util/_util.rs"] mod util; #[allow(unused_imports)] pub(crate) use util::*;
+
 #[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
 #[cfg(windows)] #[path = "windows/_windows.rs"] mod windows; #[cfg(windows)] use windows::*;
 
 use core::ffi::{CStr, c_void};
-use core::fmt::{self, Display, Formatter};
 use core::mem::{align_of, size_of, transmute_copy};
 use core::ptr::NonNull;
 
@@ -315,27 +316,6 @@ impl Library {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Symbol<'symbol> {
     Name(&'symbol CStr),
     Ordinal(u16), // windows only
-}
-
-#[allow(dead_code)]
-struct CStrDisplay<'s>(&'s CStr); // TODO: replace with CStr::display once stabilized
-
-impl Display for CStrDisplay<'_> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        match self.0.to_str() {
-            Ok(str) => fmt.write_str(str),
-            Err(_) => {
-                use core::fmt::Write;
-                for b in self.0.to_bytes().iter().copied() {
-                    fmt.write_char(match b {
-                        0 ..= 0x7F  => char::from(b),
-                        0x80 ..     => '?',
-                    })?;
-                }
-                Ok(())
-            },
-        }
-    }
 }
 
 
