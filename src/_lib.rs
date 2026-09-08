@@ -57,10 +57,8 @@ impl Library {
             use std::os::unix::ffi::OsStrExt;
             let filename = path.as_ref().as_os_str().as_bytes().iter().copied().chain([0].iter().copied()).collect::<alloc::vec::Vec<u8>>();
             unix::dlerror::clear();
-            match NonNull::new(unsafe { dlopen(filename.as_ptr() as _, RTLD_LAZY) }) {
-                Some(handle)    => Ok(Self(handle)),
-                None            => Err(LoadLibraryError { dlerror: unix::dlerror::to_cstring() }),
-            }
+            unsafe { unix::dlopen(CStr::from_bytes_with_nul(&filename).map_err(|_| LoadLibraryError { dlerror: unix::dlerror::to_cstring() })?, RTLD_LAZY) }
+                .map_err(|dlerror| LoadLibraryError { dlerror })
         };
 
         #[cfg(not(any(unix, windows)))] LoadLibraryError { _not_supported: () }

@@ -1,13 +1,14 @@
 use crate::Library;
 
-use core::ffi::{c_char, c_int, c_void};
+use core::ffi::{CStr, c_char, c_int, c_void};
 use core::num::NonZero;
 
+#[cfg(not(feature = "alloc"))] type CString = &'static core::ffi::CStr;
+#[cfg(    feature = "alloc" )] type CString = alloc::ffi::CString;
 
 
 pub(crate) const RTLD_LAZY : c_int = 1;
 extern "C" {
-    pub(crate) fn dlopen(filename: *const c_char, flags: c_int) -> *mut c_void;
     pub(crate) fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
 }
 
@@ -45,18 +46,24 @@ pub(crate) mod dlerror {
     }
 
     /// \[[man.archlinux.org](https://man.archlinux.org/man/dlerror.3.en)\]
-    /// dlerror() -> [Option]&lt;impl Deref&lt;Target = [CStr]&gt;&gt;
+    /// dlerror() -> [Option]&lt;impl Deref&lt;Target = [CStr]&gt; <span style="opacity: 25%">+ \'static?</span>&gt;
     ///
-    #[cfg(not(feature = "alloc"))] pub(crate) fn to_cstring() -> Option<&'static core::ffi::CStr> {
-        None
-    }
-
-    /// \[[man.archlinux.org](https://man.archlinux.org/man/dlerror.3.en)\]
-    /// dlerror() -> [Option]&lt;impl Deref&lt;Target = [CStr]&gt; + \'static&gt;
-    ///
-    #[cfg(feature = "alloc")] pub(crate) fn to_cstring() -> Option<alloc::ffi::CString> {
+    pub(crate) fn to_cstring() -> Option<CString> {
         let ptr = unsafe { dlerror() };
         if ptr.is_null() { return None }
-        Some(unsafe { core::ffi::CStr::from_ptr(ptr) }.into())
+        #[cfg(    feature = "alloc" )] return Some(unsafe { core::ffi::CStr::from_ptr(ptr) }.into());
+        #[cfg(not(feature = "alloc"))] return None; // XXX
     }
+}
+
+/// \[[man.archlinux.org](https://man.archlinux.org/man/dlopen.3.en)\]
+/// dlopen
+///
+/// # Safety
+/// -   Flags such as `RTLD_NOLOAD` may allow [`Library`] to potentially dangle, which is unsound.
+/// -   ???
+///
+pub(crate) unsafe fn dlopen(filename: &CStr, flags: c_int) -> Result<Library, Option<CString>> {
+    extern "C" { fn dlopen(filename: *const c_char, flags: c_int) -> Option<Library>; }
+    unsafe { dlopen(filename.as_ptr(), flags) }.ok_or_else(dlerror::to_cstring)
 }
