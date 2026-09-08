@@ -9,8 +9,8 @@
 #[path = "errors/_errors.rs"] pub mod errors; #[doc(hidden)] pub use errors::*;
 #[path = "util/_util.rs"] mod util; pub(crate) use util::*;
 
-#[cfg(unix   )] mod unix;
-#[cfg(windows)] #[path = "windows/_windows.rs"] mod windows;
+#[cfg(unix   )] #[path = "unix/_unix.rs"        ] mod unix;
+#[cfg(windows)] #[path = "windows/_windows.rs"  ] mod windows;
 
 use core::ffi::{CStr, c_void};
 use core::mem::transmute_copy;
