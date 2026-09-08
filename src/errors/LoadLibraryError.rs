@@ -18,6 +18,8 @@ impl Display for LoadLibraryError {
         };
 
         #[cfg(windows)] {
+            use windows::*;
+
             #[cfg(feature = "alloc")] let path = &self.path;
 
             #[cfg(feature = "alloc")] return match self.error {
@@ -41,9 +43,9 @@ impl Display for LoadLibraryError {
             None            => "could not load library (unknown error)",
         };
         #[cfg(windows)] return match self.error {
-            ERROR_BAD_EXE_FORMAT    => "could not load library: ERROR_BAD_EXE_FORMAT (typically the DLL architecture doesn't match the process architecture)",
-            ERROR_MOD_NOT_FOUND     => "could not load library: ERROR_MOD_NOT_FOUND (wrong path or no such library)",
-            _other                  => "could not load library (unknown error)",
+            windows::ERROR_BAD_EXE_FORMAT   => "could not load library: ERROR_BAD_EXE_FORMAT (typically the DLL architecture doesn't match the process architecture)",
+            windows::ERROR_MOD_NOT_FOUND    => "could not load library: ERROR_MOD_NOT_FOUND (wrong path or no such library)",
+            _other                          => "could not load library (unknown error)",
         };
         #[allow(unreachable_code)] "could not load library: minidl not implemented for this platform"
     }
@@ -54,9 +56,9 @@ impl Display for LoadLibraryError {
         use std::io::{Error, ErrorKind};
         #[cfg(unix)] return Error::new(ErrorKind::Other, error); // TODO: consider parsing `error.dlerror` for keywords to set ErrorKind? ...no, that's probably a bad idea
         #[cfg(windows)] return Error::new(match error.error {
-            ERROR_BAD_EXE_FORMAT    => ErrorKind::InvalidData,
-            ERROR_MOD_NOT_FOUND     => ErrorKind::NotFound,
-            _other                  => ErrorKind::Other,
+            windows::ERROR_BAD_EXE_FORMAT   => ErrorKind::InvalidData,
+            windows::ERROR_MOD_NOT_FOUND    => ErrorKind::NotFound,
+            _other                          => ErrorKind::Other,
         }, error);
         #[allow(unreachable_code)] Error::new(ErrorKind::Unsupported, "minidl doesn't implement loading libraries on this platform")
     }
