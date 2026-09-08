@@ -2,15 +2,14 @@ use crate::Library;
 
 use core::ffi::{CStr, c_char, c_int, c_void};
 use core::num::NonZero;
+use core::ptr::NonNull;
 
 #[cfg(not(feature = "alloc"))] type CString = &'static core::ffi::CStr;
 #[cfg(    feature = "alloc" )] type CString = alloc::ffi::CString;
 
 
+
 pub(crate) const RTLD_LAZY : c_int = 1;
-extern "C" {
-    pub(crate) fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
-}
 
 
 
@@ -66,4 +65,12 @@ pub(crate) mod dlerror {
 pub(crate) unsafe fn dlopen(filename: &CStr, flags: c_int) -> Result<Library, Option<CString>> {
     extern "C" { fn dlopen(filename: *const c_char, flags: c_int) -> Option<Library>; }
     unsafe { dlopen(filename.as_ptr(), flags) }.ok_or_else(dlerror::to_cstring)
+}
+
+/// \[[man.archlinux.org](https://man.archlinux.org/man/dlsym.3.en)\]
+/// dlsym
+///
+pub(crate) fn dlsym(handle: Library, symbol: &CStr) -> Result<NonNull<c_void>, Option<CString>> {
+    extern "C" { fn dlsym(handle: Library, symbol: *const c_char) -> Option<NonNull<c_void>>; }
+    unsafe { dlsym(handle, symbol.as_ptr()) }.ok_or_else(dlerror::to_cstring)
 }

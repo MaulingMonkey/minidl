@@ -11,8 +11,8 @@ pub mod errors; #[doc(hidden)] pub use errors::*;
 
 use core::ffi::{CStr, c_void};
 use core::fmt::{self, Display, Formatter};
-use core::mem::size_of;
-use core::ptr::{NonNull, null_mut};
+use core::mem::{align_of, size_of, transmute_copy};
+use core::ptr::NonNull;
 
 /// A loaded library handle.
 ///
@@ -125,7 +125,7 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
-    pub unsafe fn sym<'symbol, T>(&self, name: &'symbol CStr) -> core::result::Result<T, MissingSymbolError<'symbol>> {
+    pub unsafe fn sym<'symbol, T>(self, name: &'symbol CStr) -> core::result::Result<T, MissingSymbolError<'symbol>> {
         self.sym_opt(name).ok_or_else(|| MissingSymbolError { symbol: Symbol::Name(name) })
     }
 
@@ -142,17 +142,16 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., name)`
     /// | Unix      | `dlsym(..., name)`
-    pub unsafe fn sym_opt<T>(&self, name: &CStr) -> Option<T> {
-        assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
+    pub unsafe fn sym_opt<T>(self, name: &CStr) -> Option<T> {
+        let _ = FnPtrChecks::<T>::ASSERT;
 
-        #[cfg(windows)] let result = windows::get_proc_address::by_name(*self, name).ok()?.as_ptr();
-        #[cfg(unix)] let result = dlsym(self.as_ptr(), name.as_ptr());
+        #[cfg(windows)] let func = windows::get_proc_address::by_name(self, name).ok()?;
+        #[cfg(unix   )] let func = unix::dlsym(self, name).ok()?;
 
-        if result == null_mut() {
-            None
-        } else {
-            Some(core::ptr::read(&result as *const *mut c_void as *const T))
-        }
+        // SAFETY: ✔️
+        //  * `T`   ✔️ is asserted to be the same alignment and size as `*mut c_void` via assert at start of function
+        //  * `T`   ✔️ is assumed compatible with `*mut c_void` per the documented safety contract of this unsafe function
+        Some(transmute_copy::<NonNull<c_void>, T>(&func))
     }
 
     /// Load a symbol from the library by ordinal.
@@ -187,20 +186,17 @@ impl Library {
     /// | --------- | -------- |
     /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(ordinal))`
     /// | <strike>Unix</strike> | `None`
-    pub unsafe fn sym_opt_by_ordinal<T>(self, ordinal: u16) -> Option<T> {
-        assert_eq!(size_of::<T>(), size_of::<*mut c_void>(), "symbol result is not pointer sized!");
+    pub unsafe fn sym_opt_by_ordinal<T>(self, _ordinal: u16) -> Option<T> {
+        let _ = FnPtrChecks::<T>::ASSERT;
 
-        #[cfg(windows)] let func = windows::get_proc_address::by_ordinal(self, ordinal).ok()?.as_ptr();
-        #[cfg(unix)] let func = null_mut::<c_void>();
-        #[cfg(unix)] let _ = ordinal;
+        #[cfg(unix   )] return None;
+        #[cfg(windows)] return {
+            let func = windows::get_proc_address::by_ordinal(self, _ordinal).ok()?;
 
-        if func.is_null() {
-            None
-        } else {
             // SAFETY: ✔️
-            //  * `T`   ✔️ is asserted to be the same size as `*mut c_void` via assert at start of function (can't enforce this at compile time)
+            //  * `T`   ✔️ is asserted to be the same alignment and size as `*mut c_void` via assert at start of function
             //  * `T`   ✔️ is assumed compatible with `*mut c_void` per the documented safety contract of this unsafe function
-            Some(core::mem::transmute_copy::<*mut c_void, T>(&func))
+            Some(transmute_copy::<NonNull<c_void>, T>(&func))
         }
     }
 
@@ -340,4 +336,14 @@ impl Display for CStrDisplay<'_> {
             },
         }
     }
+}
+
+
+
+struct FnPtrChecks<F>(F);
+impl<F> FnPtrChecks<F> {
+    pub const ASSERT : () = const {
+        assert!(align_of::<F>() == align_of::<*mut c_void>(), "symbol result has wrong alignment");
+        assert!(size_of ::<F>() == size_of ::<*mut c_void>(), "symbol result has wrong size");
+    };
 }
