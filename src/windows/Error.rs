@@ -16,6 +16,8 @@ impl Error {
     /// GetLastError
     ///
     pub(crate) fn get_last() -> Self {
+        // Consider marking this #[unsafe(ffi_pure)] if/when that attribute stabilizes.
+        // https://doc.rust-lang.org/beta/unstable-book/language-features/ffi-pure.html
         extern "system" { fn GetLastError() -> Error; }
         unsafe { GetLastError() }
     }
