@@ -6,13 +6,13 @@
 #[cfg(feature = "std")]     extern crate std;
 
 #[path = "errors/_errors.rs"] pub mod errors; #[doc(hidden)] pub use errors::*;
-#[path = "util/_util.rs"] mod util; #[allow(unused_imports)] pub(crate) use util::*;
+#[path = "util/_util.rs"] mod util; pub(crate) use util::*;
 
 #[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
 #[cfg(windows)] #[path = "windows/_windows.rs"] mod windows; #[cfg(windows)] use windows::*;
 
 use core::ffi::{CStr, c_void};
-use core::mem::{align_of, size_of, transmute_copy};
+use core::mem::transmute_copy;
 use core::ptr::NonNull;
 
 /// A loaded library handle.
@@ -316,14 +316,4 @@ impl Library {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)] enum Symbol<'symbol> {
     Name(&'symbol CStr),
     Ordinal(u16), // windows only
-}
-
-
-
-struct FnPtrChecks<F>(F);
-impl<F> FnPtrChecks<F> {
-    pub const ASSERT : () = const {
-        assert!(align_of::<F>() == align_of::<*mut c_void>(), "symbol result has wrong alignment");
-        assert!(size_of ::<F>() == size_of ::<*mut c_void>(), "symbol result has wrong size");
-    };
 }
