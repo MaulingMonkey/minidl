@@ -11,8 +11,8 @@ env:
 
 jobs:
   windows:
-    name: Windows 2019 Server
-    runs-on: windows-2019
+    name: Windows Server Latest
+    runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
     - name: Sync / Info
