@@ -5,7 +5,7 @@
 #[cfg(feature = "alloc")]   extern crate alloc;
 #[cfg(feature = "std")]     extern crate std;
 
-pub mod errors; #[doc(hidden)] pub use errors::*;
+#[path = "errors/_errors.rs"] pub mod errors; #[doc(hidden)] pub use errors::*;
 #[cfg(unix   )] mod unix   ; #[cfg(unix   )] use unix::*;
 #[cfg(windows)] mod windows; #[cfg(windows)] use windows::*;
 
