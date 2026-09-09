@@ -20,8 +20,8 @@ Extremely lean cross platform library for loading symbols.
 ## Quick Start
 
 ```rust
-use minidl::*;
-use std::os::raw::*;
+use minidl::Library;
+use core::ffi::c_char;
 
 struct Example {
     OutputDebugStringA: unsafe extern "system" fn (_: *const c_char),
