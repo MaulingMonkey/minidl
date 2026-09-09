@@ -237,7 +237,7 @@ const _ : () = {
         ///
         /// ## Unsafe Alternatives
         /// A wrapper or crate with "better" support for this fundamentally flawed operation might:
-        /// *   Limit support to plugin-shaped dynamic libraries that opt-in to claiming they're safe to unload (export a special fn/symbol?)
+        /// *   Limit unloading to libraries that explicitly claim they're safe to unload (via special fn? e.g. OLE's [`DllCanUnloadNow`](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-dllcanunloadnow)?)
         /// *   Actively test unloading to catch the bugs in those libraries
         /// *   Introduce lifetimes (e.g. [`libloading::Symbol`](https://docs.rs/libloading/0.8.1/libloading/struct.Symbol.html)), or make fn pointers private, to help combat fn pointer invalidation bugs
         /// *   Not implement [`Copy`] for [`Library`] (or equivalent)
