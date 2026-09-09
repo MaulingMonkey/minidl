@@ -35,7 +35,7 @@ const _ : () = {
         /// | --------- | -------- |
         /// | Windows   | `LoadLibraryW(path)`
         /// | Unix      | `dlopen(path, ...)`
-        pub fn load(path: impl NameOrPath) -> core::result::Result<Self, LoadLibraryError> {
+        pub fn load(path: impl NameOrPath) -> core::result::Result<Library, LoadLibraryError> {
             #[cfg(windows)] return {
                 use windows::*;
                 with_ncstr0(
@@ -76,7 +76,7 @@ const _ : () = {
         /// | --------- | --------- |
         /// | Windows   | [`libloaderapi.h`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/)-compatible `HMODULE`
         /// | Unix      | [`dlfcn.h`](https://pubs.opengroup.org/onlinepubs/7908799/xsh/dlfcn.h.html)-compatible handle
-        pub unsafe fn from_ptr(handle: *mut c_void) -> Option<Self> { Some(Self::from_non_null(NonNull::new(handle)?)) }
+        pub unsafe fn from_ptr(handle: *mut c_void) -> Option<Library> { Some(unsafe { Library::from_non_null(NonNull::new(handle)?) }) }
 
         /// Wrap a forever-loaded library in [`Library`] for interop purpouses.
         ///
@@ -90,7 +90,7 @@ const _ : () = {
         /// | --------- | --------- |
         /// | Windows   | [`libloaderapi.h`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/)-compatible `HMODULE`
         /// | Unix      | [`dlfcn.h`](https://pubs.opengroup.org/onlinepubs/7908799/xsh/dlfcn.h.html)-compatible handle
-        pub unsafe fn from_non_null(handle: NonNull<c_void>) -> Self { Self(handle) }
+        pub unsafe fn from_non_null(handle: NonNull<c_void>) -> Library { Library(handle) }
 
         /// Return a raw handle pointer for interop purpouses.
         ///
@@ -123,7 +123,7 @@ const _ : () = {
         /// | Windows   | `GetProcAddress(..., name)`
         /// | Unix      | `dlsym(..., name)`
         pub unsafe fn sym<'symbol, T>(self, name: &'symbol CStr) -> core::result::Result<T, MissingSymbolError<'symbol>> {
-            self.sym_opt(name).ok_or_else(|| MissingSymbolError { symbol: Symbol::Name(name) })
+            unsafe { self.sym_opt(name) }.ok_or_else(|| MissingSymbolError { symbol: Symbol::Name(name) })
         }
 
         /// Load a symbol from the library.
@@ -148,7 +148,7 @@ const _ : () = {
             // SAFETY: ✔️
             //  * `T`   ✔️ is asserted to be the same alignment and size as `*mut c_void` via assert at start of function
             //  * `T`   ✔️ is assumed compatible with `*mut c_void` per the documented safety contract of this unsafe function
-            Some(transmute_copy::<NonNull<c_void>, T>(&func))
+            Some(unsafe { transmute_copy::<NonNull<c_void>, T>(&func) })
         }
 
         /// Load a symbol from the library by ordinal.
@@ -166,7 +166,7 @@ const _ : () = {
         /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(ordinal))`
         /// | <strike>Unix</strike> | `Err(...)`
         pub unsafe fn sym_by_ordinal<T>(self, ordinal: u16) -> core::result::Result<T, MissingSymbolError<'static>> {
-            self.sym_opt_by_ordinal(ordinal).ok_or_else(||MissingSymbolError { symbol: Symbol::Ordinal(ordinal) })
+            unsafe { self.sym_opt_by_ordinal(ordinal) }.ok_or_else(||MissingSymbolError { symbol: Symbol::Ordinal(ordinal) })
         }
 
         /// Load a symbol from the library by ordinal.
@@ -193,7 +193,7 @@ const _ : () = {
                 // SAFETY: ✔️
                 //  * `T`   ✔️ is asserted to be the same alignment and size as `*mut c_void` via assert at start of function
                 //  * `T`   ✔️ is assumed compatible with `*mut c_void` per the documented safety contract of this unsafe function
-                Some(transmute_copy::<NonNull<c_void>, T>(&func))
+                Some(unsafe { transmute_copy::<NonNull<c_void>, T>(&func) })
             }
         }
 
@@ -304,8 +304,8 @@ const _ : () = {
         /// | Windows   | `FreeLibrary(...)`
         /// | Unix      | `dlclose(...)`
         pub unsafe fn close_unsafe_unsound_possible_noop_do_not_use_in_production(self) -> core::result::Result<(), UnloadLibraryError> {
-            #[cfg(windows)] return windows::free_library(self).map_err(|error| UnloadLibraryError { error });
-            #[cfg(unix)] return unix::dlclose(self).map_err(|ret| UnloadLibraryError { dlerror: unix::dlerror::to_cstring(), ret });
+            #[cfg(windows   )] return unsafe { windows::free_library(self)  }.map_err(|error| UnloadLibraryError { error });
+            #[cfg(unix      )] return unsafe { unix::dlclose(self)          }.map_err(|ret| UnloadLibraryError { dlerror: unix::dlerror::to_cstring(), ret });
         }
     }
 };
