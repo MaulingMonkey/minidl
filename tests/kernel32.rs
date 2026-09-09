@@ -11,9 +11,9 @@ use core::fmt::{self, Debug, Formatter};
 
 #[allow(dead_code)] // Imported methods not actually used
 struct Example {
-    OutputDebugStringA: unsafe extern "system" fn (_: *const c_char),
-    Invalid_Optional:   Option<unsafe extern "system" fn (_: *const c_char)>,
-    Invalid_Required:   unsafe extern "system" fn (_: *const c_char),
+    OutputDebugStringA: unsafe extern "system" fn (_: *const c_char),           // ✔️ correct signature
+    Invalid_Optional:   Option<unsafe extern "system" fn (_: *const c_char)>,   // ⚠️ should never exist, and never used, so any signature "should" be OK
+    Invalid_Required:   unsafe extern "system" fn (_: *const c_char),           // ⚠️ should never exist, and never used, so any signature "should" be OK
 }
 
 impl Example {
@@ -22,6 +22,7 @@ impl Example {
     }
 
     pub fn from(lib: Library) -> Result<Self> {
+        // SAFETY: ⚠️ see per-member notes in struct Example { ... }
         unsafe{Ok(Self{
             OutputDebugStringA: lib.sym(c"OutputDebugStringA")?,
             Invalid_Optional:   lib.sym_opt(c"Invalid_Optional"),

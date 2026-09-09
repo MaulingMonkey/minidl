@@ -10,7 +10,8 @@ impl WCStr {
 
     pub fn from_units_with_nul(units: &[u16]) -> Result<&WCStr, FromUnitsWithNulError> {
         match units {
-            [body@.., 0] if !body.contains(&0)  => Ok(unsafe { core::mem::transmute(units) }),
+            // SAFETY: ✔️ transmute is between a reference to a transparent wrapper and a reference to it's wrapee
+            [body@.., 0] if !body.contains(&0)  => Ok(unsafe { core::mem::transmute::<&[u16], &WCStr>(units) }),
             _other                              => Err(FromUnitsWithNulError(())),
         }
     }

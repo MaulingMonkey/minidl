@@ -10,6 +10,7 @@
 ///
 pub(crate) unsafe fn free_library(module: Library) -> Result<(), Error> {
     extern "system" { fn FreeLibrary(hModule: Library) -> u32; }
+    // SAFETY: ❌ this is incredibly unsound (see fn docs)
     match unsafe { FreeLibrary(module) } {
         0   => Err(Error::get_last()),
         1.. => Ok(()),

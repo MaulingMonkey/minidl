@@ -19,6 +19,12 @@ impl Error {
         // Consider marking this #[unsafe(ffi_pure)] if/when that attribute stabilizes.
         // https://doc.rust-lang.org/beta/unstable-book/language-features/ffi-pure.html
         extern "system" { fn GetLastError() -> Error; }
+
+        // SAFETY: ✔️ GetLastError() has basically prerequisites.
+        //  The only way it's going wrong is if the thread is somehow missing it's https://en.wikipedia.org/wiki/Win32_Thread_Information_Block .
+        //  You have bigger problems than GetLastError() soundness if that's missing however - including,
+        //  but not limited to, #[thread_local] and the safe std::thread_local! APIs being broken/unsound.
+        //
         unsafe { GetLastError() }
     }
 

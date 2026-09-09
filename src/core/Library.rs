@@ -51,6 +51,9 @@ const _ : () = {
                 dlerror::clear();
                 with_ncstr0(
                     path.as_ref(),
+                    // SAFETY: ✔️ flags are sound
+                    //  - ✔️ RTLD_LAZY is sound
+                    //  - ✔️ RTLD_LOCAL is sound (and implied / the default per the docs)
                     |path0| unsafe { dlopen(path0, RTLD_LAZY) }.map_err(|dlerror| LoadLibraryError { dlerror }),
                     || Err(LoadLibraryError { dlerror: Some(c"unable to load library: filename contains interior NULs".into()) }),
                     || Err(LoadLibraryError { dlerror: Some(c"unable to load library: filename too long for stack buffer, minidl built without feature = \"alloc\"".into()) }),
@@ -76,7 +79,10 @@ const _ : () = {
         /// | --------- | --------- |
         /// | Windows   | [`libloaderapi.h`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/)-compatible `HMODULE`
         /// | Unix      | [`dlfcn.h`](https://pubs.opengroup.org/onlinepubs/7908799/xsh/dlfcn.h.html)-compatible handle
-        pub unsafe fn from_ptr(handle: *mut c_void) -> Option<Library> { Some(unsafe { Library::from_non_null(NonNull::new(handle)?) }) }
+        pub unsafe fn from_ptr(handle: *mut c_void) -> Option<Library> {
+            // SAFETY: ✔️ fn documents the expectation that `handle` is a valid 'static handle.
+            Some(unsafe { Library::from_non_null(NonNull::new(handle)?) })
+        }
 
         /// Wrap a forever-loaded library in [`Library`] for interop purpouses.
         ///
@@ -123,6 +129,7 @@ const _ : () = {
         /// | Windows   | `GetProcAddress(..., name)`
         /// | Unix      | `dlsym(..., name)`
         pub unsafe fn sym<'symbol, T>(self, name: &'symbol CStr) -> core::result::Result<T, MissingSymbolError<'symbol>> {
+            // SAFETY: ✔️ same safety consideration (hazardous transmute) are documented by sym_opt as are documented by sym
             unsafe { self.sym_opt(name) }.ok_or_else(|| MissingSymbolError { symbol: Symbol::Name(name) })
         }
 
@@ -166,6 +173,7 @@ const _ : () = {
         /// | Windows   | `GetProcAddress(..., MAKEINTRESOURCE(ordinal))`
         /// | <strike>Unix</strike> | `Err(...)`
         pub unsafe fn sym_by_ordinal<T>(self, ordinal: u16) -> core::result::Result<T, MissingSymbolError<'static>> {
+            // SAFETY: ✔️ same safety consideration (hazardous transmutes, unstable ordinals) are documented by sym_opt_by_ordinal as are documented by sym_by_ordinal
             unsafe { self.sym_opt_by_ordinal(ordinal) }.ok_or_else(||MissingSymbolError { symbol: Symbol::Ordinal(ordinal) })
         }
 
@@ -304,6 +312,7 @@ const _ : () = {
         /// | Windows   | `FreeLibrary(...)`
         /// | Unix      | `dlclose(...)`
         pub unsafe fn close_unsafe_unsound_possible_noop_do_not_use_in_production(self) -> core::result::Result<(), UnloadLibraryError> {
+            // SAFETY: ❌ this is incredibly unsound (see fn docs)
             #[cfg(windows   )] return unsafe { windows::free_library(self)  }.map_err(|error| UnloadLibraryError { error });
             #[cfg(unix      )] return unsafe { unix::dlclose(self)          }.map_err(|ret| UnloadLibraryError { dlerror: unix::dlerror::to_cstring(), ret });
         }

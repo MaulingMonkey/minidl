@@ -24,14 +24,15 @@ use minidl::Library;
 use core::ffi::c_char;
 
 struct Example {
-    OutputDebugStringA: unsafe extern "system" fn (_: *const c_char),
-    Invalid_Optional:   Option<unsafe extern "system" fn (_: *const c_char)>,
+    OutputDebugStringA: unsafe extern "system" fn (_: *const c_char),           // ✔️ correct signature
+    Invalid_Optional:   Option<unsafe extern "system" fn (_: *const c_char)>,   // ⚠️ should never exist, and never used, so any signature "should" be OK
 }
 
 impl Example {
     #[cfg(feature = "std")] // std::io::Result
     pub fn new() -> std::io::Result<Self> {
         let lib = Library::load("kernel32.dll")?;
+        // SAFETY: ⚠️ see per-member notes in struct Example { ... }
         unsafe{Ok(Self{
             OutputDebugStringA: lib.sym(c"OutputDebugStringA")?,
             Invalid_Optional:   lib.sym_opt(c"Invalid_Optional"),

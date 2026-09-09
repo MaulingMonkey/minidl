@@ -23,6 +23,7 @@ pub(crate) const RTLD_LAZY : c_int = 1;
 ///
 pub(crate) unsafe fn dlclose(handle: Library) -> Result<(), NonZero<c_int>> {
     extern "C" { fn dlclose(handle: Library) -> Option<NonZero<c_int>>; }
+    // SAFETY: ❌ this is incredibly unsound (see fn docs)
     match unsafe { dlclose(handle) } {
         None        => Ok(()),
         Some(err)   => Err(err),
@@ -41,6 +42,7 @@ pub(crate) mod dlerror {
     /// drop(dlerror())
     ///
     pub(crate) fn clear() {
+        // SAFETY: ✔️ No other ptr to dlerror() should be outstanding.  If it is, that code is blatently unsound `unsafe` code.
         let _ = unsafe { dlerror() };
     }
 
@@ -48,8 +50,11 @@ pub(crate) mod dlerror {
     /// dlerror() -> [Option]&lt;impl Deref&lt;Target = [CStr]&gt; <span style="opacity: 25%">+ \'static?</span>&gt;
     ///
     pub(crate) fn to_cstring() -> Option<CString> {
+        // SAFETY: ✔️ No other ptr to dlerror() should be outstanding.  If it is, that code is blatently unsound `unsafe` code.
         let ptr = unsafe { dlerror() };
         if ptr.is_null() { return None }
+        // SAFETY: ✔️ `ptr` should still be valid at this time, shouldn't be dangling, shouldn't be null (per above check), and should be a
+        //  `\0`-terminated string per `dlerror`'s documentation.  We immediately convert `.into()` a CString to avoid future dangling pointers.
         #[cfg(    feature = "alloc" )] return Some(unsafe { core::ffi::CStr::from_ptr(ptr) }.into());
         #[cfg(not(feature = "alloc"))] return None; // XXX
     }
@@ -64,6 +69,10 @@ pub(crate) mod dlerror {
 ///
 pub(crate) unsafe fn dlopen(filename: &CStr, flags: c_int) -> Result<Library, Option<CString>> {
     extern "C" { fn dlopen(filename: *const c_char, flags: c_int) -> Option<Library>; }
+
+    // SAFETY: ⚠️
+    //  - `filename`    ✔️ is a valid, non-dangling, `\0`-terminated string containing no interior `\0`s, as implied by `CStr`'s existence.
+    //  - `flags`       ⚠️ could contain unsound flags - this wrapper fn is `unsafe` as a result, with this caveat documented.
     unsafe { dlopen(filename.as_ptr(), flags) }.ok_or_else(dlerror::to_cstring)
 }
 
@@ -72,5 +81,9 @@ pub(crate) unsafe fn dlopen(filename: &CStr, flags: c_int) -> Result<Library, Op
 ///
 pub(crate) fn dlsym(handle: Library, symbol: &CStr) -> Result<NonNull<c_void>, Option<CString>> {
     extern "C" { fn dlsym(handle: Library, symbol: *const c_char) -> Option<NonNull<c_void>>; }
+
+    // SAFETY: ✔️
+    //  - `handle`  ✔️ is a valid, non-dangling, loaded library handle, as implied by `Library`'s existence.
+    //  - `symbol`  ✔️ is a valid, non-dangling, `\0`-terminated string containing no interior `\0`s, as implied by `CStr`'s existence.
     unsafe { dlsym(handle, symbol.as_ptr()) }.ok_or_else(dlerror::to_cstring)
 }

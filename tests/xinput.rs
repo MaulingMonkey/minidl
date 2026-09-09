@@ -17,7 +17,7 @@ struct XInput {
 impl XInput {
     pub fn new() -> Result<Self> { Self::from(Library::load("xinput1_3.dll")?) }
     pub fn from(lib: Library) -> Result<Self> {
-        // SAFETY: ✔️ see per-member notes in example struct
+        // SAFETY: ✔️ see per-member notes in struct Example { ... }
         unsafe{Ok(Self{
             XInputGetState:     lib.sym(c"XInputGetState")?,
             XInputGetStateEx:   lib.sym_by_ordinal(100)?,
