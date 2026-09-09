@@ -1,5 +1,5 @@
 #![cfg(windows)]
-#![allow(non_snake_case)]
+#![allow(non_snake_case)] // Win32 fn names
 
 use minidl::*;
 
@@ -9,7 +9,7 @@ use core::fmt::{self, Debug, Formatter};
 #[cfg(    feature = "std" )] use std::io::Result;
 #[cfg(not(feature = "std"))] type Result<T> = core::result::Result<T, IgnoreError>;
 
-#[allow(dead_code)]
+#[allow(dead_code)] // Imported methods not actually used
 struct Example {
     OutputDebugStringA: unsafe extern "system" fn (_: *const c_char),
     Invalid_Optional:   Option<unsafe extern "system" fn (_: *const c_char)>,

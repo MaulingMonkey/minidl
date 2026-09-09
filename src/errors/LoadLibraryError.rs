@@ -7,7 +7,7 @@
     #[cfg(all(unix,     feature = "alloc"   ))] pub(crate) dlerror: Option<alloc::ffi::CString>,
     #[cfg(all(unix, not(feature = "alloc")  ))] pub(crate) dlerror: Option<&'static core::ffi::CStr>,
     #[cfg(all(windows                       ))] pub(crate) error:   windows::Error,
-    #[cfg(windows)] #[allow(dead_code)]         pub(crate) path:    ErrorPath,
+    #[cfg(all(windows                       ))] pub(crate) path:    ErrorPath,
 }
 
 impl Display for LoadLibraryError {
@@ -17,21 +17,22 @@ impl Display for LoadLibraryError {
             None        => write!(fmt, "could not load library"),
         };
 
-        #[cfg(windows)] {
+        #[cfg(windows)] return {
             use windows::*;
 
-            #[cfg(feature = "alloc")] let path = &self.path;
-
-            #[cfg(feature = "alloc")] return match self.error {
-                ERROR_BAD_EXE_FORMAT    => write!(fmt, "could not load library: ERROR_BAD_EXE_FORMAT loading {path} (wrong architecture? x86 on x86-64 or vicea versa?)"),
-                error                   => write!(fmt, "could not load library: {error:?} loading {path}"),
-            };
-
-            #[cfg(not(feature = "alloc"))] return match self.error {
-                ERROR_BAD_EXE_FORMAT    => write!(fmt, "could not load library: ERROR_BAD_EXE_FORMAT (wrong architecture? x86 on x86-64 or vicea versa?)"),
-                error                   => write!(fmt, "could not load library: {error:?}"),
-            };
-        }
+            let path = &self.path;
+            if core::matches!(path, ErrorPath::Unknown) {
+                match self.error {
+                    ERROR_BAD_EXE_FORMAT    => write!(fmt, "could not load library: ERROR_BAD_EXE_FORMAT (wrong architecture? x86 on x86-64 or vicea versa?)"),
+                    error                   => write!(fmt, "could not load library: {error:?}"),
+                }
+            } else {
+                match self.error {
+                    ERROR_BAD_EXE_FORMAT    => write!(fmt, "could not load library: ERROR_BAD_EXE_FORMAT loading {path} (wrong architecture? x86 on x86-64 or vicea versa?)"),
+                    error                   => write!(fmt, "could not load library: {error:?} loading {path}"),
+                }
+            }
+        };
     }
 }
 

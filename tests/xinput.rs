@@ -1,5 +1,5 @@
 #![cfg(windows)]
-#![allow(non_snake_case)]
+#![allow(non_snake_case)] // XInput fn names
 
 use minidl::*;
 
@@ -8,7 +8,7 @@ use core::ffi::c_char;
 #[cfg(    feature = "std" )] use std::io::Result;
 #[cfg(not(feature = "std"))] type Result<T> = core::result::Result<T, IgnoreError>;
 
-#[allow(dead_code)] // methods not actually used
+#[allow(dead_code)] // Imported methods not actually used
 struct XInput {
     XInputGetState:     unsafe extern "system" fn (_: *const c_char),
     XInputGetStateEx:   unsafe extern "system" fn (_: *const c_char),

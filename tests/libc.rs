@@ -8,7 +8,7 @@ use core::fmt::{self, Debug, Formatter};
 #[cfg(    feature = "std" )] use std::io::Result;
 #[cfg(not(feature = "std"))] type Result<T> = core::result::Result<T, IgnoreError>;
 
-#[allow(dead_code)]
+#[allow(dead_code)] // Imported methods not actually used
 struct Example {
     puts:               unsafe extern "C" fn (_: *const c_char) -> c_int,
     invalid_optional:   Option<unsafe extern "C" fn (_: *const c_char) -> c_int>,

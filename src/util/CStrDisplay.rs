@@ -1,6 +1,6 @@
 // TODO: replace with CStr::display once stabilized
 
-#[allow(dead_code)]
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) struct CStrDisplay<'s>(pub &'s core::ffi::CStr);
 
 impl core::fmt::Display for CStrDisplay<'_> {
