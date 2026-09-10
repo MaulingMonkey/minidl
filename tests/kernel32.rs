@@ -7,7 +7,7 @@ use core::ffi::c_char;
 use core::fmt::{self, Debug, Formatter};
 
 #[cfg(    feature = "std" )] use std::io::Result;
-#[cfg(not(feature = "std"))] type Result<T> = core::result::Result<T, IgnoreError>;
+#[cfg(not(feature = "std"))] type Result<T> = core::result::Result<T, dev::StringError>;
 
 #[allow(dead_code)] // Imported methods not actually used
 struct Example {
@@ -44,12 +44,10 @@ impl Debug for Example {
 }
 
 #[test] fn bad_sym() {
-    let _e = Example::new().expect_err("Example should've failed to load Invalid_Required");
-    #[cfg(feature = "std")] {
-        let e = format!("{_e}");
-        assert!(!e.contains("Invalid_Optional"), "{}", e);
-        assert!( e.contains("Invalid_Required"), "{}", e);
-    }
+    let e = Example::new().expect_err("Example should've failed to load Invalid_Required");
+    let e = format!("{e}");
+    assert!(!e.contains("Invalid_Optional"), "{}", e);
+    assert!( e.contains("Invalid_Required"), "{}", e);
 }
 
 #[test] fn ok_sym() {
@@ -61,8 +59,3 @@ impl Debug for Example {
         OutputDebugStringA(c"Hello, world!".as_ptr() as _);
     }
 }
-
-#[allow(dead_code)] #[derive(Debug)] struct IgnoreError(());
-impl From<minidl::LoadLibraryError      > for IgnoreError { fn from(_: minidl::LoadLibraryError     ) -> Self { Self(()) } }
-impl From<minidl::UnloadLibraryError    > for IgnoreError { fn from(_: minidl::UnloadLibraryError   ) -> Self { Self(()) } }
-impl From<minidl::MissingSymbolError<'_>> for IgnoreError { fn from(_: minidl::MissingSymbolError   ) -> Self { Self(()) } }

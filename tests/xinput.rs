@@ -6,7 +6,7 @@ use minidl::*;
 use core::ffi::c_void;
 
 #[cfg(    feature = "std" )] use std::io::Result;
-#[cfg(not(feature = "std"))] type Result<T> = core::result::Result<T, IgnoreError>;
+#[cfg(not(feature = "std"))] type Result<T> = core::result::Result<T, dev::StringError>;
 
 #[allow(dead_code)] // Imported methods not actually used
 struct XInput {
@@ -39,8 +39,3 @@ impl XInput {
         xinput.expect("XInput");
     }
 }
-
-#[allow(dead_code)] #[derive(Debug)] struct IgnoreError(());
-impl From<minidl::LoadLibraryError      > for IgnoreError { fn from(_: minidl::LoadLibraryError     ) -> Self { Self(()) } }
-impl From<minidl::UnloadLibraryError    > for IgnoreError { fn from(_: minidl::UnloadLibraryError   ) -> Self { Self(()) } }
-impl From<minidl::MissingSymbolError<'_>> for IgnoreError { fn from(_: minidl::MissingSymbolError   ) -> Self { Self(()) } }
