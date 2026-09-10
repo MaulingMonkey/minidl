@@ -69,3 +69,33 @@ impl Example {
         puts(c"Hello, world!".as_ptr().cast());
     }
 }
+
+/// Nothing in dlerror()'s documentation implies the error messages are stable or unlocalized.
+///
+/// Run tests like this with e.g.:
+/// ```sh
+/// cargo test --no-default-features --features ""          --  --include-ignored
+/// cargo test --no-default-features --features "alloc"     --  --include-ignored
+/// cargo test --no-default-features --features "std"       --  --include-ignored
+/// ```
+///
+#[ignore = "exact error messages returned by dlerror() are subject to change, this is only provided for manually testing to bring error messages into alignment"]
+#[test] fn exact_dlerror_messages() {
+    // LoadLibraryError
+    let load_err = Library::load("libdoes_not_exist_invalid.so").expect_err("invalid library should've failed to load");
+    assert_eq!(format!("{load_err}"), match cfg!(feature = "alloc") {
+        true    => "could not load library: libdoes_not_exist_invalid.so: cannot open shared object file: No such file or directory",
+        false   => "could not load library",
+    });
+
+    #[cfg(any(/* false */))] { // MissingSymbolError currently has no dlerror() payload, so don't bother inspecting it
+        let libc = Library::load("/lib/x86_64-linux-gnu/libc.so.6").expect("unable to load libc");
+        let sym_err = unsafe { libc.sym::<*mut core::ffi::c_void>(c"invalid_required") }.expect_err("libc unexpectedly contained invalid_required");
+        assert_eq!(format!("{sym_err:?}"), "...");
+    }
+
+    #[cfg(any(/* false */))] { // UnloadLibraryError - yes, this is *incredibly* unsound.  In fact it just crashes with SIGSEGV: invalid memory reference.
+        let unload_err = unsafe { minidl::Library::from_ptr(0x12345678_usize as *mut _).unwrap().close_unsafe_unsound_possible_noop_do_not_use_in_production().expect_err("invalid library should've failed to unload") };
+        assert_eq!(format!("{unload_err:?}"), "...");
+    }
+}
